@@ -1,0 +1,14 @@
+export const PROPERTIES = [
+    { id: 1, title: 'The Azure Penthouse', location: 'Chelsea, New York, 10001', price: 8500, beds: 3, baths: 2.5, sqft: 2240, tags: ['VERIFIED LANDLORD', 'AVAILABLE NOW'], image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', petFriendly: true },
+    { id: 2, title: 'Harbor Point Suites', location: 'Brooklyn, NY 11201', price: 4200, beds: 1, baths: 1, sqft: 850, tags: ['NO PARKING'], image: 'https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', petFriendly: false },
+    { id: 3, title: 'The Glass House Condo', location: 'Midtown, NY 10019', price: 5800, beds: 2, baths: 2, sqft: 1100, tags: ['PRICE CUT'], image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', petFriendly: true },
+    { id: 4, title: 'Riverside Loft', location: 'Jersey City, NJ 07302', price: 3900, beds: 1, baths: 1, sqft: 900, tags: ['NEW LISTING'], image: 'https://images.unsplash.com/photo-1556912172-45b7ee8819d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', petFriendly: true },
+    { id: 5, title: 'Village Studio', location: 'West Village, NY 10014', price: 2750, beds: 0, baths: 1, sqft: 450, tags: ['LOW AVAILABILITY'], image: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', petFriendly: false },
+  ];
+  
+  export const ANALYSIS_FLAGS = [
+    { id: 1, type: 'red', title: 'Unspecified Common Area Maintenance', text: 'The lease mentions a "monthly variable CAM fee" but does not define the cap or historical averages. This could lead to unpredictable spikes in monthly costs.', action: 'Request a 3-year history of CAM charges.', section: 'Section 4.2', tag: 'HIDDEN FEES' },
+    { id: 2, type: 'red', title: 'Unfair Termination Clause', text: 'The landlord reserves the right to terminate the lease with only 30 days notice for "aesthetic renovations" without providing relocation assistance.', action: 'Strike this clause or negotiate 90-day notice.', section: 'Section 12.1', tag: 'TERMINATION' },
+    { id: 3, type: 'green', title: 'Clear Utility Breakdown', text: 'Transparent allocation of responsibility for all services. The landlord provides fiber internet inclusion which is a significant value add.', action: 'Estimated $120/mo savings on connectivity.', section: 'Section 2.5', tag: 'UTILITIES' },
+    { id: 4, type: 'green', title: 'Standard Deposit Terms', text: 'The security deposit is limited to 1 month\'s rent and held in an interest-bearing escrow account, fully compliant with local regulations.', action: 'Complies with State Housing Code.', section: 'Section 5.0', tag: 'DEPOSIT' },
+  ];
