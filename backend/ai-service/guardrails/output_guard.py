@@ -17,6 +17,13 @@ def validate_contract_output(output: str) -> str:
         raise ValueError("Output guardrail: contract recommendation missing")
     return output
 
+def validate_lease_analyzer_output(output: str) -> str:
+    """Ensures lease analyzer output includes red/green flag assessments."""
+    upper = output.upper()
+    if "RED" not in upper and "GREEN" not in upper:
+        raise ValueError("Output guardrail: lease analysis must include RED or GREEN flag assessments")
+    return output
+
 def validate_chatbot_output(output: str) -> str:
     """Ensures chatbot doesn't hallucinate legal advice."""
     legal_advice_phrases = [

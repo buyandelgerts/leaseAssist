@@ -43,6 +43,18 @@ class ContractInput(BaseModel):
             raise ValueError("Contract text is too short to be a real lease")
         return v
 
+class LeaseAnalyzerInput(BaseModel):
+    inputType: str = Field(..., description="Input type: 'text', 'url', or 'file'")
+    leaseInput: str = Field(..., min_length=10, description="Lease text, URL, or file path")
+    cityName: str = Field(..., min_length=2, description="City name for local law comparison")
+    landlordEmail: Optional[str] = "landlord@example.com"
+
+    @validator("inputType")
+    def validate_input_type(cls, v):
+        if v not in ("text", "url", "file"):
+            raise ValueError("inputType must be 'text', 'url', or 'file'")
+        return v
+
 class ChatbotInput(BaseModel):
     user_question: str = Field(..., min_length=3, max_length=1000)
     tenant_name: Optional[str] = "Tenant"

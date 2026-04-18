@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -26,11 +28,13 @@ dist-ssr
 frontend/node_modules
 frontend/dist
 frontend/.env
+backend/.env
 backend/ai-service/.env
 backend/api-service/.env
 
 .venv/
 backend/ai-service/.venv/
+backend/ai-service/venv/
 backend/api-service/.venv/
 backend/ai-service/__pycache__/
 backend/api-service/__pycache__/

@@ -8,20 +8,24 @@ from guardrails.input_guard import (
     PropertyInput,
     ContractInput,
     ChatbotInput,
+    LeaseAnalyzerInput,
 )
 from guardrails.output_guard import (
     validate_eligibility_output,
     validate_contract_output,
     validate_chatbot_output,
+    validate_lease_analyzer_output,
 )
 from crew import (
     run_eligibility,
     run_property_matcher,
     run_contract_analyzer,
     run_chatbot,
+    run_lease_analyzer,
 )
 
-load_dotenv()
+load_dotenv()  # loads ai-service/.env
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))  # loads backend/.env
 os.makedirs("outputs", exist_ok=True)
 
 app = FastAPI(
@@ -102,6 +106,21 @@ async def chat(data: ChatbotInput):
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
+@app.post("/analyze-lease")
+async def analyze_lease(data: LeaseAnalyzerInput):
+    try:
+        result = run_lease_analyzer(inputs=data.model_dump())
+        return {
+            "status": "success",
+            "process": "lease_analyzer",
+            "result": str(result),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+
 @app.get("/")
 async def root():
     return {
@@ -112,5 +131,6 @@ async def root():
             "/property-match",
             "/analyze-contract",
             "/chat",
+            "/analyze-lease",
         ],
     }
