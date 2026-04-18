@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Map, Bookmark, File, FileText, HelpCircle, UploadCloud, Shield, Zap, DollarSign, AlertCircle, Building2, ArrowRight, Loader2 } from "lucide-react";
+import { File, UploadCloud, Shield, Zap, DollarSign, AlertCircle, Building2, ArrowRight, Loader2 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import mammoth from "mammoth";
@@ -50,7 +50,7 @@ const AnalysisUploadView = ({ setCurrentView, setAnalysisResult, analysisLoading
           for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const content = await page.getTextContent();
-            text += content.items.map((item: { str?: string }) => ('str' in item ? item.str : '')).join(' ') + '\n';
+            text += content.items.map((item) => ('str' in item ? item.str : '')).join(' ') + '\n';
           }
           setUploadedText(text.trim());
         } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
@@ -143,29 +143,6 @@ const AnalysisUploadView = ({ setCurrentView, setAnalysisResult, analysisLoading
 
     return (
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] bg-slate-50">
-
-        {/* Sidebar Navigation */}
-        <div className="w-full lg:w-64 bg-white border-r border-slate-200 p-6 hidden lg:block shrink-0">
-          <div className="mb-8">
-            <h2 className="text-lg font-bold text-blue-900 mb-1">Curated Spaces</h2>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Premium Tier</p>
-          </div>
-          <nav className="space-y-2">
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
-              <Map size={18} /> Map View
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors">
-              <Bookmark size={18} /> Saved Properties
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 bg-blue-50 text-blue-700 rounded-lg font-medium transition-colors">
-              <FileText size={18} /> My Documents
-            </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg font-medium transition-colors mt-8">
-              <HelpCircle size={18} /> Support
-            </a>
-          </nav>
-        </div>
-
         {/* Main Content */}
         <div className="flex-1 p-6 md:p-12 max-w-5xl mx-auto w-full">
           <div className="mb-8">
