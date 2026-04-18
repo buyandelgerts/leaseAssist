@@ -21,24 +21,38 @@ type AppView =
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>("home");
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState("");
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
       <Navbar currentView={currentView} setCurrentView={setCurrentView} />
-      
+
       <main className="flex-grow w-full max-w-7xl mx-auto">
         {currentView === 'home' && <HomeView setCurrentView={setCurrentView} />}
         {currentView === 'search' && <SearchView setCurrentView={setCurrentView} />}
         {currentView === 'detail' && <PropertyDetailView setCurrentView={setCurrentView} />}
-        {currentView === 'analysis-upload' && <AnalysisUploadView setCurrentView={setCurrentView} />}
-        {currentView === 'analysis-result' && <AnalysisResultView setCurrentView={setCurrentView} />}
+        {currentView === 'analysis-upload' && (
+          <AnalysisUploadView
+            setCurrentView={setCurrentView}
+            setAnalysisResult={setAnalysisResult}
+            analysisLoading={analysisLoading}
+            setAnalysisLoading={setAnalysisLoading}
+          />
+        )}
+        {currentView === 'analysis-result' && (
+          <AnalysisResultView
+            setCurrentView={setCurrentView}
+            analysisResult={analysisResult}
+          />
+        )}
         {currentView === 'calculator' && <CalculatorView />}
       </main>
 
       <Footer />
-      
+
       <ChatbotOverlay isOpen={isChatOpen} setIsOpen={setIsChatOpen} setCurrentView={setCurrentView} />
-      
+
       {/* Floating Action Button for Chatbot */}
       {!isChatOpen && (
         <button title="chat"
