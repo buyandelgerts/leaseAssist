@@ -23,12 +23,13 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [eligibilityResult, setEligibilityResult] = useState("");
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
       <Navbar currentView={currentView} setCurrentView={setCurrentView} />
 
-      <main className="flex-grow w-full max-w-7xl mx-auto">
+      <main className="grow w-full max-w-7xl mx-auto">
         {currentView === 'home' && <HomeView setCurrentView={setCurrentView} />}
         {currentView === 'search' && <SearchView setCurrentView={setCurrentView} />}
         {currentView === 'detail' && <PropertyDetailView setCurrentView={setCurrentView} />}
@@ -46,12 +47,22 @@ export default function App() {
             analysisResult={analysisResult}
           />
         )}
-        {currentView === 'calculator' && <CalculatorView />}
+        {currentView === 'calculator' && (
+          <CalculatorView setEligibilityResult={setEligibilityResult} />
+        )}
       </main>
 
       <Footer />
 
-      <ChatbotOverlay isOpen={isChatOpen} setIsOpen={setIsChatOpen} setCurrentView={setCurrentView} />
+      <ChatbotOverlay
+        isOpen={isChatOpen}
+        setIsOpen={setIsChatOpen}
+        setCurrentView={setCurrentView}
+        sessionContext={{
+          eligibility_result: eligibilityResult || undefined,
+          lease_analysis: analysisResult || undefined,
+        }}
+      />
 
       {/* Floating Action Button for Chatbot */}
       {!isChatOpen && (

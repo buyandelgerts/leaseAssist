@@ -1,8 +1,7 @@
 from crewai import Agent
-from tools.income_tool import income_calculator_tool
-# from tools.guardrail_tool import input_validator_tool
 
-def create_eligibility_agent():
+
+def create_eligibility_agent(server):
     return Agent(
         role="Rental Eligibility Specialist",
         goal=(
@@ -13,14 +12,14 @@ def create_eligibility_agent():
         ),
         backstory=(
             "You are a certified housing counselor with 12 years of experience "
-            "in rental elilgibility assessments across multiple US states. "
+            "in rental eligibility assessments across multiple US states. "
             "You use the standard 30% income rule and debt-to-income (DTI) "
             "ratio to determine affordability. You are fair, accurate, and "
             "never make up numbers."
         ),
-        tools=[income_calculator_tool],
+        mcps=[server],
         memory=True,
         verbose=True,
         max_iter=4,
-        max_retry_limit=2
+        max_retry_limit=2,
     )

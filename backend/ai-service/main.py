@@ -9,6 +9,7 @@ from guardrails.input_guard import (
     ContractInput,
     ChatbotInput,
     LeaseAnalyzerInput,
+    SessionContext,
 )
 from guardrails.output_guard import (
     validate_eligibility_output,

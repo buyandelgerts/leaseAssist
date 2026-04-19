@@ -55,14 +55,19 @@ class LeaseAnalyzerInput(BaseModel):
             raise ValueError("inputType must be 'text', 'url', or 'file'")
         return v
 
+class SessionContext(BaseModel):
+    eligibility_result: Optional[str] = None
+    lease_analysis: Optional[str] = None
+
+
 class ChatbotInput(BaseModel):
     user_question: str = Field(..., min_length=3, max_length=1000)
     tenant_name: Optional[str] = "Tenant"
-    conversation_history: Optional[str] = ""
+    conversation_history: Optional[list] = []
+    session_context: Optional[SessionContext] = None
 
     @validator("user_question")
     def sanitize_question(cls, v):
-        # Block prompt injection attempts
         blocked = ["ignore previous", "system:", "you are now", "jailbreak"]
         if any(phrase in v.lower() for phrase in blocked):
             raise ValueError("Question contains disallowed content")
