@@ -17,13 +17,14 @@ type AnalysisUploadRoute =
 interface AnalysisUploadViewProps {
   setCurrentView: (view: AnalysisUploadRoute) => void;
   setAnalysisResult: (result: string) => void;
+  setLandlordEmail: (email: string) => void;
   analysisLoading: boolean;
   setAnalysisLoading: (loading: boolean) => void;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.port === "5173" ? "http://localhost:8000" : "");
 
-const AnalysisUploadView = ({ setCurrentView, setAnalysisResult, analysisLoading, setAnalysisLoading }: AnalysisUploadViewProps) => {
+const AnalysisUploadView = ({ setCurrentView, setAnalysisResult, setLandlordEmail, analysisLoading, setAnalysisLoading }: AnalysisUploadViewProps) => {
     const [inputMode, setInputMode] = useState<'upload' | 'paste'>('paste');
     const [error, setError] = useState<string | null>(null);
     const [agentStep, setAgentStep] = useState(0);
@@ -129,6 +130,7 @@ const AnalysisUploadView = ({ setCurrentView, setAnalysisResult, analysisLoading
         const data = await res.json();
         if (data.status === "success" && data.result) {
           setAnalysisResult(data.result);
+          setLandlordEmail(landlordEmail);
         } else {
           setError("Unexpected response format from the server.");
           return;

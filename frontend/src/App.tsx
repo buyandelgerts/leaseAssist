@@ -23,6 +23,7 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [landlordEmail, setLandlordEmail] = useState("");
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
@@ -36,6 +37,7 @@ export default function App() {
           <AnalysisUploadView
             setCurrentView={setCurrentView}
             setAnalysisResult={setAnalysisResult}
+            setLandlordEmail={setLandlordEmail}
             analysisLoading={analysisLoading}
             setAnalysisLoading={setAnalysisLoading}
           />
@@ -44,6 +46,7 @@ export default function App() {
           <AnalysisResultView
             setCurrentView={setCurrentView}
             analysisResult={analysisResult}
+            landlordEmail={landlordEmail}
           />
         )}
         {currentView === 'calculator' && <CalculatorView />}

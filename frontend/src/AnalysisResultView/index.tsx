@@ -1,4 +1,5 @@
-import { FileText, ChevronDown, AlertCircle, CheckCircle, Mail, Zap } from "lucide-react";
+import { useState } from "react";
+import { FileText, ChevronDown, AlertCircle, CheckCircle, Mail, Zap, Send, Loader2, CheckCheck } from "lucide-react";
 
 type AnalysisResultRoute =
   | 'home'
@@ -11,6 +12,7 @@ type AnalysisResultRoute =
 interface AnalysisResultViewProps {
   setCurrentView: (view: AnalysisResultRoute) => void;
   analysisResult: string;
+  landlordEmail: string;
 }
 
 interface ParsedItem {
@@ -34,7 +36,30 @@ function parseNumberedItems(text: string): ParsedItem[] {
   return items;
 }
 
-const AnalysisResultView = ({ setCurrentView, analysisResult }: AnalysisResultViewProps) => {
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.port === "5173" ? "http://localhost:8000" : "");
+
+const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: AnalysisResultViewProps) => {
+    const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+    const handleSendEmail = async () => {
+      setSendStatus('sending');
+      try {
+        const res = await fetch(`${API_BASE}/send-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: landlordEmail,
+            subject: "Request for Lease Agreement Revisions",
+            body: emailText,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed");
+        setSendStatus('sent');
+      } catch {
+        setSendStatus('error');
+      }
+    };
+
     // Split result into sections
     const lower = analysisResult.toLowerCase();
     const redIdx = lower.indexOf('red flag');
@@ -242,6 +267,22 @@ const AnalysisResultView = ({ setCurrentView, analysisResult }: AnalysisResultVi
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
                 <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans leading-relaxed">{emailText}</pre>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={handleSendEmail}
+                  disabled={sendStatus === 'sending' || sendStatus === 'sent'}
+                  className={`px-6 py-3 rounded-xl font-bold transition-colors shadow-md flex items-center gap-2 disabled:cursor-not-allowed ${
+                    sendStatus === 'sent' ? 'bg-green-600 text-white' :
+                    sendStatus === 'error' ? 'bg-rose-600 text-white hover:bg-rose-700' :
+                    'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {sendStatus === 'sending' && <><Loader2 size={18} className="animate-spin" /> Sending...</>}
+                  {sendStatus === 'sent' && <><CheckCheck size={18} /> Email Sent!</>}
+                  {sendStatus === 'error' && <><Send size={18} /> Retry Send</>}
+                  {sendStatus === 'idle' && <><Send size={18} /> Send Email to Landlord</>}
+                </button>
               </div>
             </div>
           )}
