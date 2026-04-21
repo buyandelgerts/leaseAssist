@@ -18,12 +18,25 @@ type AppView =
   | "analysis-result"
   | "calculator";
 
+export interface SelectedProperty {
+  id: string | number;
+  title: string;
+  location: string;
+  price: number;
+  beds: number;
+  baths: number;
+  sqft: number;
+  image: string;
+  summary: string;
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState<AppView>("home");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [eligibilityResult, setEligibilityResult] = useState("");
+  const [selectedProperty, setSelectedProperty] = useState<SelectedProperty | null>(null);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
@@ -31,8 +44,18 @@ export default function App() {
 
       <main className="grow w-full max-w-7xl mx-auto">
         {currentView === 'home' && <HomeView setCurrentView={setCurrentView} />}
-        {currentView === 'search' && <SearchView setCurrentView={setCurrentView} />}
-        {currentView === 'detail' && <PropertyDetailView setCurrentView={setCurrentView} />}
+        {currentView === 'search' && (
+          <SearchView
+            setCurrentView={setCurrentView}
+            setSelectedProperty={setSelectedProperty}
+          />
+        )}
+        {currentView === 'detail' && (
+          <PropertyDetailView
+            setCurrentView={setCurrentView}
+            selectedProperty={selectedProperty}
+          />
+        )}
         {currentView === 'analysis-upload' && (
           <AnalysisUploadView
             setCurrentView={setCurrentView}

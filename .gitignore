@@ -36,6 +36,8 @@ backend/api-service/.env
 backend/ai-service/.venv/
 backend/ai-service/venv/
 backend/api-service/.venv/
+backend/api-service/venv/
 backend/ai-service/__pycache__/
 backend/api-service/__pycache__/
 *.pyc
+.hintrc

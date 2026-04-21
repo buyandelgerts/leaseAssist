@@ -15,7 +15,7 @@ interface HomeViewProps {
 const HomeView = ({ setCurrentView }: HomeViewProps) => (
     <div className="w-full pb-16">
       {/* Hero Section */}
-      <div className="relative w-full h-[600px] bg-slate-900 overflow-hidden">
+      <div className="relative w-full h-[400px] bg-slate-900 overflow-hidden">
         <img 
           src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80" 
           alt="Modern Home Architecture" 
@@ -30,58 +30,6 @@ const HomeView = ({ setCurrentView }: HomeViewProps) => (
           <p className="text-lg md:text-xl text-slate-200 mb-12 max-w-2xl font-light">
             A curated selection of architectural residences, simplified for the discerning tenant.
           </p>
-  
-          {/* Hero Search Box */}
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 w-full max-w-4xl mx-auto border border-white/20">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Select State</label>
-                <div className="relative">
-                  <select title="states" className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option>California</option>
-                    <option>New York</option>
-                    <option>Texas</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-3.5 text-slate-400" size={18} />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Enter Zipcode</label>
-                <input type="text" placeholder="e.g. 90210" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Apartment Type</label>
-                <div className="relative">
-                  <select title="apartment-types" className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option>Studio</option>
-                    <option>1 Bedroom</option>
-                    <option>2 Bedrooms</option>
-                    <option>Loft</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-3.5 text-slate-400" size={18} />
-                </div>
-              </div>
-            </div>
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Tell us more about your requirements</label>
-              <input type="text" placeholder="Describe your ideal floor plan, natural light needs, or neighborhood preferences..." className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-xs font-bold text-blue-800">JC</div>
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 border-2 border-white flex items-center justify-center text-xs font-bold text-emerald-800">AM</div>
-                </div>
-                <span>Join <strong className="text-slate-900">1,200+</strong> seekers finding curated spaces this week.</span>
-              </div>
-              <button 
-                onClick={() => setCurrentView('search')}
-                className="w-full sm:w-auto bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30"
-              >
-                Search
-              </button>
-            </div>
-          </div>
         </div>
       </div>
   

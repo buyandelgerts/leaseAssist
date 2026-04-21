@@ -1,4 +1,6 @@
-import { Map, ArrowRight, Settings, Zap, Activity, Shield, Dog, CheckCircle, AlertCircle, MessageCircle } from "lucide-react";
+import { useState } from "react";
+import { Map, ArrowRight, Settings, Zap, Activity, Shield, Dog, CheckCircle, AlertCircle, MessageCircle, Loader2 } from "lucide-react";
+import type { SelectedProperty } from "../App";
 
 type PropertyDetailRoute =
   | 'home'
@@ -10,9 +12,79 @@ type PropertyDetailRoute =
 
 interface PropertyDetailViewProps {
   setCurrentView: (view: PropertyDetailRoute) => void;
+  selectedProperty: SelectedProperty | null;
 }
 
-const PropertyDetailView = ({ setCurrentView }: PropertyDetailViewProps) => {
+interface TourRequestResponse {
+  status: string;
+  process: string;
+  result?: string;
+  detail?: string;
+}
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const DEFAULT_LANDLORD_EMAIL = import.meta.env.VITE_LANDLORD_EMAIL;
+
+const PropertyDetailView = ({ setCurrentView, selectedProperty }: PropertyDetailViewProps) => {
+    const propertyTitle = selectedProperty?.title || "The Meridian Loft";
+    const propertyLocation = selectedProperty?.location || "450 Architecture Way, Design District, San Francisco";
+    const propertyPrice = selectedProperty?.price ?? 4850;
+    const propertySqft = selectedProperty?.sqft ?? 1240;
+    const propertySummary = selectedProperty?.summary;
+    const [preferredDate, setPreferredDate] = useState("");
+    const [preferredTime, setPreferredTime] = useState("09:00 AM");
+    const [tenantPhone, setTenantPhone] = useState("");
+    const [isScheduling, setIsScheduling] = useState(false);
+    const [tourError, setTourError] = useState("");
+    const [tourSuccess, setTourSuccess] = useState("");
+    const mainImage =
+      selectedProperty?.image ||
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80";
+
+    const handleScheduleTour = async () => {
+      setTourError("");
+      setTourSuccess("");
+
+      if (!preferredDate) {
+        setTourError("Please select a preferred date.");
+        return;
+      }
+
+      const payload = {
+        landlord_email: DEFAULT_LANDLORD_EMAIL,
+        tenant_name: "Website Visitor",
+        property_address: propertyLocation,
+        preferred_date: preferredDate,
+        preferred_time: preferredTime,
+        tenant_phone: tenantPhone.trim() || undefined,
+      };
+
+      setIsScheduling(true);
+      try {
+        const response = await fetch(`${API_BASE}/tour-request`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = (await response.json()) as TourRequestResponse;
+        if (!response.ok) {
+          throw new Error(data?.detail || "Tour request failed.");
+        }
+
+        const apiResultText = data?.result || "Tour request sent successfully.";
+        setTourSuccess(apiResultText);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Something went wrong while scheduling the tour.";
+        setTourError(message);
+      } finally {
+        setIsScheduling(false);
+      }
+    };
+
     return (
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Back & Breadcrumb */}
@@ -26,7 +98,7 @@ const PropertyDetailView = ({ setCurrentView }: PropertyDetailViewProps) => {
         {/* Hero Image Grid */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 h-[500px]">
           <div className="md:col-span-2 h-full rounded-2xl overflow-hidden relative group">
-            <img src="https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Main Living" className="w-full h-full object-cover" />
+            <img src={mainImage} alt={propertyTitle} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-blue-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <h2 className="text-white text-3xl font-bold tracking-widest uppercase">Primary Living Area</h2>
             </div>
@@ -55,16 +127,16 @@ const PropertyDetailView = ({ setCurrentView }: PropertyDetailViewProps) => {
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-4">
                 <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full">AVAILABLE NOW</span>
-                <span className="text-slate-500 text-sm font-medium">Ref ID: AL-4802</span>
+                <span className="text-slate-500 text-sm font-medium">Ref ID: {selectedProperty?.id ?? "AL-4802"}</span>
               </div>
-              <h1 className="text-4xl font-bold text-slate-900 mb-2">The Meridian Loft</h1>
-              <p className="text-lg text-slate-600 flex items-center gap-2"><Map size={18} /> 450 Architecture Way, Design District, San Francisco</p>
+              <h1 className="text-4xl font-bold text-slate-900 mb-2">{propertyTitle}</h1>
+              <p className="text-lg text-slate-600 flex items-center gap-2"><Map size={18} /> {propertyLocation}</p>
             </div>
   
             <div className="flex gap-8 mb-10 pb-8 border-b border-slate-200">
               <div>
                 <div className="flex items-baseline text-blue-600">
-                  <span className="text-4xl font-bold">$4,850</span>
+                  <span className="text-4xl font-bold">${propertyPrice.toLocaleString()}</span>
                   <span className="text-lg font-medium">/mo</span>
                 </div>
                 <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Monthly Lease</span>
@@ -72,7 +144,7 @@ const PropertyDetailView = ({ setCurrentView }: PropertyDetailViewProps) => {
               <div className="w-px bg-slate-200"></div>
               <div>
                 <div className="flex items-baseline text-slate-900">
-                  <span className="text-4xl font-bold">1,240</span>
+                  <span className="text-4xl font-bold">{propertySqft.toLocaleString()}</span>
                   <span className="text-lg font-medium ml-1">sq ft</span>
                 </div>
                 <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Total Space</span>
@@ -82,7 +154,7 @@ const PropertyDetailView = ({ setCurrentView }: PropertyDetailViewProps) => {
             <div className="mb-10">
               <h3 className="text-2xl font-bold text-slate-900 mb-4">Architectural Narrative</h3>
               <p className="text-slate-600 leading-relaxed">
-                Designed with an uncompromising vision of modern living, The Meridian Loft offers a curated experience in the heart of the Design District. Featuring expansive 14-foot ceilings and raw industrial elements softened by white oak finishes, this space transitions seamlessly from a high-performance workspace to an intimate sanctuary. The open-plan layout is anchored by a chef-inspired kitchen and floor-to-ceiling glass that frames the urban landscape as living art.
+                {propertySummary || "Designed with an uncompromising vision of modern living, The Meridian Loft offers a curated experience in the heart of the Design District. Featuring expansive 14-foot ceilings and raw industrial elements softened by white oak finishes, this space transitions seamlessly from a high-performance workspace to an intimate sanctuary. The open-plan layout is anchored by a chef-inspired kitchen and floor-to-ceiling glass that frames the urban landscape as living art."}
               </p>
             </div>
   
@@ -168,22 +240,52 @@ const PropertyDetailView = ({ setCurrentView }: PropertyDetailViewProps) => {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Preferred Date</label>
                     <div className="relative">
-                      <input title="date" type="date" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:ring-2 focus:ring-blue-500" />
+                      <input
+                        title="date"
+                        type="date"
+                        value={preferredDate}
+                        onChange={(event) => setPreferredDate(event.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Preferred Time</label>
-                    <select title="clock" className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:ring-2 focus:ring-blue-500 appearance-none">
+                    <select
+                      title="clock"
+                      value={preferredTime}
+                      onChange={(event) => setPreferredTime(event.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:ring-2 focus:ring-blue-500 appearance-none"
+                    >
                       <option>09:00 AM</option>
                       <option>10:00 AM</option>
                       <option>01:00 PM</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Phone Number</label>
+                    <input
+                      title="tenant-phone"
+                      type="tel"
+                      value={tenantPhone}
+                      onChange={(event) => setTenantPhone(event.target.value)}
+                      placeholder="(555) 123-4567"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-4 text-slate-700 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
                 
-                <button className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 mb-4">
-                  Schedule Tour
+                <button
+                  type="button"
+                  onClick={handleScheduleTour}
+                  disabled={isScheduling}
+                  className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-md shadow-blue-600/20 mb-4 disabled:bg-blue-300 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                >
+                  {isScheduling && <Loader2 size={18} className="animate-spin" />}
+                  {isScheduling ? "Scheduling..." : "Schedule Tour"}
                 </button>
+                {tourError && <p className="text-sm text-rose-600 mb-4">{tourError}</p>}
+                {tourSuccess && <p className="text-sm text-emerald-700 mb-4">{tourSuccess}</p>}
   
                 <div className="pt-6 border-t border-slate-100">
                   <div className="flex items-center gap-3 mb-4">

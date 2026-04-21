@@ -14,8 +14,10 @@ def search_apartments(payload: SearchRequest, db: Session = Depends(get_db)):
             query=payload.query,
             city=payload.city,
             state=payload.state,
-            max_price=payload.max_price,
+            zip_code=payload.zip_code,
+            property_type=payload.property_type,
             min_bedrooms=payload.min_bedrooms,
+            min_bathrooms=payload.min_bathrooms,
             limit=payload.limit
         )
 

@@ -16,9 +16,11 @@ def create_send_tour_request_task(agent):
         - message: {message}
 
         Rules:
-        1) If required fields are missing, return a clear message listing missing fields.
-        2) If required fields are present, call `send_apartment_tour_request`.
-        3) Return the tool result exactly, plus one friendly confirmation sentence.
+        1) Required fields are: landlord_email, tenant_name, property_address, preferred_date, preferred_time.
+        2) Optional fields are: tenant_phone, message.
+        3) If required fields are missing, return a clear message listing missing required fields only.
+        4) If required fields are present, call `send_apartment_tour_request`.
+        5) Return the tool result exactly, plus one friendly confirmation sentence.
         """,
         expected_output="""
         A concise result indicating whether the tour request email was sent successfully.

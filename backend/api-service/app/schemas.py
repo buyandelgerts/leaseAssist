@@ -32,8 +32,10 @@ class SearchRequest(BaseModel):
     query: str
     city: Optional[str] = None
     state: Optional[str] = None
-    max_price: Optional[int] = None
+    zip_code: Optional[str] = None
+    property_type: Optional[str] = None
     min_bedrooms: Optional[float] = None
+    min_bathrooms: Optional[float] = None
     limit: int = 5
 
 
@@ -42,6 +44,8 @@ class SearchResult(BaseModel):
     formatted_address: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
+    zip_code: Optional[str] = None
+    property_type: Optional[str] = None
     price: Optional[int] = None
     bedrooms: Optional[float] = None
     bathrooms: Optional[float] = None
