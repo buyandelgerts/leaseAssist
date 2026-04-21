@@ -1,0 +1,9 @@
+**/node_modules
+**/venv
+**/.venv
+**/__pycache__
+**/.env
+backend/ai-service/db
+backend/ai-service/outputs
+frontend/package-lock.json
+.git
