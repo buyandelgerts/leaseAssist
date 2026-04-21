@@ -415,7 +415,6 @@ def send_apartment_tour_request(
     property_address: str,
     preferred_date: str,
     preferred_time: str,
-    tenant_email: str | None = None,
     tenant_phone: str | None = None,
     message: str | None = None,
 ) -> str:
@@ -428,20 +427,15 @@ def send_apartment_tour_request(
         property_address: Property address the tenant wants to tour
         preferred_date: Preferred tour date (e.g. 'May 3, 2026')
         preferred_time: Preferred time window (e.g. '5:30 PM' or '5-6 PM')
-        tenant_email: Optional tenant email for landlord follow-up
         tenant_phone: Optional tenant phone for landlord follow-up
         message: Optional additional message for landlord
     """
     if not _is_valid_email(landlord_email):
         return "Failed to send email: invalid landlord_email format."
-    if tenant_email and not _is_valid_email(tenant_email):
-        return "Failed to send email: invalid tenant_email format."
 
     subject = f"Apartment Tour Request - {property_address}"
 
     contact_lines = []
-    if tenant_email:
-        contact_lines.append(f"- Email: {tenant_email}")
     if tenant_phone:
         contact_lines.append(f"- Phone: {tenant_phone}")
     contact_block = "\n".join(contact_lines) if contact_lines else "- Preferred contact: reply to this email"
