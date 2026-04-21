@@ -1,9 +1,7 @@
-# agents/property_agent.py
 from crewai import Agent
-from tools.property_search_tool import property_search_tool
-from tools.property_filter_tool import property_filter_tool
 
-def create_property_agent():
+
+def create_property_agent(server):
     return Agent(
         role="Property Matching Specialist",
         goal=(
@@ -17,8 +15,8 @@ def create_property_agent():
             "by price, location, size, and features. You are honest about "
             "trade-offs and always show real, available units only."
         ),
-        tools=[property_search_tool, property_filter_tool],
+        mcps=[server],
         memory=True,
         verbose=True,
-        max_iter=5
+        max_iter=5,
     )

@@ -1,30 +1,34 @@
-# tasks/eligibility_tasks.py
 from crewai import Task
+from crewai import Agent
+from typing import Any, Optional
+import json
 
-def create_eligibility_task(agent):
+def create_eligibility_task(
+    agent: Agent,
+    applicant_data: dict[str, Any],
+    context_task: Optional[Task] = None,  # optional chained output from search task
+) -> Task:
+    applicant_data_text = json.dumps(applicant_data, indent=2, default=str).replace("{", "(").replace("}", ")")
+
+    task_kwargs = {}
+    if context_task is not None:
+        task_kwargs["context"] = [context_task]
+
     return Task(
-        description="""
-        A tenant has submitted their financial details for eligibility screening.
-
-        Tenant details:
-        - Monthly gross income: ${monthly_income}
-        - Monthly debt payments: ${monthly_debts}
-        - State: {state}
-        - Desired rent budget: ${desired_budget}
-
-        Your job:
-        1. Run the IncomeCalculatorTool with the provided figures
-        2. Determine if the tenant is ELIGIBLE, BORDERLINE, or NOT ELIGIBLE
-        3. Provide their maximum safe monthly rent
-        4. Give 2–3 actionable recommendations if borderline or ineligible
-        """,
-        expected_output="""
-        A structured report containing:
-        - Verdict (ELIGIBLE / BORDERLINE / NOT ELIGIBLE)
-        - Maximum affordable rent
-        - DTI ratio
-        - 2–3 recommendations if applicable
-        """,
+        description=(
+            "Using the search results from the previous task and the applicant data below, "
+            "determine whether the applicant is eligible.\n\n"
+            f"APPLICANT DATA:\n{applicant_data_text}\n\n"
+            "Steps:\n"
+            "1. Review the context documents from the search task.\n"
+            "2. Run the eligibility_calculator tool with the applicant data.\n"
+            "3. Cross-reference the tool output with any policy details in the documents.\n"
+            "4. Return a final eligibility decision with reasons and recommendation."
+        ),
+        expected_output=(
+            "A JSON object containing: 'is_eligible' (bool), 'confidence_score' (0-1), "
+            "'reasons' (list), 'applied_rules' (list), and 'recommendation' (string)."
+        ),
         agent=agent,
-        output_file="outputs/eligibility_report.txt"
+        **task_kwargs,
     )

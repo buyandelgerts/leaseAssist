@@ -1,9 +1,7 @@
-# agents/contract_agent.py
 from crewai import Agent
-from tools.contract_analyzer_tool import contract_analyzer_tool
-from tools.state_law_tool import state_law_tool
 
-def create_contract_agent():
+
+def create_contract_agent(server):
     return Agent(
         role="Lease Contract Analyst",
         goal=(
@@ -17,8 +15,8 @@ def create_contract_agent():
             "agreements. You know every predatory clause and every tenant "
             "protection law. You never give legal advice — you analyze and flag."
         ),
-        tools=[contract_analyzer_tool, state_law_tool],
+        mcps=[server],
         memory=True,
         verbose=True,
-        max_iter=6
+        max_iter=6,
     )

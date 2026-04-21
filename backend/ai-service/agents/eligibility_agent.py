@@ -1,26 +1,21 @@
 from crewai import Agent
-from tools.income_tool import income_calculator_tool
-# from tools.guardrail_tool import input_validator_tool
+from tools.eligibility_tool import EligibilityCalculatorTool
 
-def create_eligibility_agent():
+def create_eligibility_agent() -> Agent:
     return Agent(
-        role="Rental Eligibility Specialist",
+        role="Eligibility Assessment Specialist",
         goal=(
-            "Calculate whether a tenant qualifies for a lease based on their "
-            "income, debt, and state-specific affordability rules. "
-            "Always return a clear ELIGIBLE / NOT ELIGIBLE / BORDERLINE verdict "
-            "with a suggested budget range."
+            "Determine whether an applicant is eligible based on their data "
+            "and the relevant policy documents provided by the search agent."
         ),
         backstory=(
-            "You are a certified housing counselor with 12 years of experience "
-            "in rental elilgibility assessments across multiple US states. "
-            "You use the standard 30% income rule and debt-to-income (DTI) "
-            "ratio to determine affordability. You are fair, accurate, and "
-            "never make up numbers."
+            "You are a meticulous compliance officer who evaluates applicants "
+            "against a defined set of eligibility rules. You use both structured "
+            "applicant data and contextual documents to make fair, well-reasoned "
+            "decisions. You always explain your reasoning clearly."
         ),
-        tools=[income_calculator_tool],
-        memory=True,
+        tools=[EligibilityCalculatorTool()],
         verbose=True,
-        max_iter=4,
-        max_retry_limit=2
+        allow_delegation=False,
+        max_iter=3,
     )

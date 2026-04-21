@@ -1,6 +1,10 @@
 import { ChevronDown, Check, Zap, AlertCircle } from "lucide-react";
 
-const CalculatorView = () => {
+interface CalculatorViewProps {
+  setEligibilityResult?: (result: string) => void;
+}
+
+const CalculatorView = (_props: CalculatorViewProps) => {
     return (
       <div className="max-w-6xl mx-auto px-4 py-12">
         <div className="mb-12">

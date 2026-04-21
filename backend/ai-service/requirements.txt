@@ -1,12 +1,33 @@
-crewai==0.80.0
-crewai-tools==0.14.0
+# Core
+setuptools>=69.0,<81      # pkg_resources removed in setuptools 81+
 fastapi==0.111.0
 uvicorn==0.30.0
-pydantic>=2.7.4,<3.0.0
 python-dotenv==1.0.0
+pydantic>=2.7.4,<3.0.0
+httpx>=0.27.0
+
+# CrewAI — pinned back to your original working version
+crewai==0.80.0
+crewai-tools>=0.17.0,<0.20.0
+
+# OpenAI — must stay below 2.0.0 for langchain-openai 0.2.1
 openai>=1.40.0,<2.0.0
+
+# LangChain stack — all pinned to the same 0.3.x generation
 langchain==0.3.1
 langchain-openai==0.2.1
 langchain-community==0.3.1
+
+# OpenTelemetry — pin to match what crewai 0.80.0 expects
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-semantic-conventions==0.48b0
+
+# Vector / DB
 faiss-cpu==1.8.0
-# pypdf==4.2.0
+psycopg2-binary
+pgvector
+
+# Other
+tiktoken>=0.7.0,<0.8.0
+mcp>=1.0.0

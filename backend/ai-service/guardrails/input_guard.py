@@ -1,6 +1,5 @@
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, validator, EmailStr, Field
 from typing import Optional
-
 class EligibilityInput(BaseModel):
     monthly_income: float = Field(..., gt=0, description="Gross monthly income in USD")
     monthly_debts: float = Field(..., ge=0, description="Total monthly debt payments")
@@ -26,12 +25,14 @@ class EligibilityInput(BaseModel):
             raise ValueError("Monthly income seems unrealistically high")
         return v
 
-class PropertyInput(BaseModel):
+class SearchInput(BaseModel):
     city: str = Field(..., min_length=2, description="Target city")
-    max_budget: float = Field(..., gt=500, description="Max monthly rent")
-    min_beds: int = Field(1, ge=1, le=6)
-    pet_friendly: Optional[bool] = False
-    special_requirements: Optional[str] = ""
+    state: str = Field(..., min_length=2, description="Target state")
+    zip_code: Optional[str] = Field(default=None, min_length=5, description="Target zip code")
+    max_budget: Optional[float] = Field(default=None, gt=500, description="Max monthly rent")
+    min_beds: Optional[int] = Field(default=None, ge=1, le=6)
+    min_baths: Optional[int] = Field(default=None, ge=1, le=6)
+    query: Optional[str] = Field(default=None, description="Search query")
 
 class ContractInput(BaseModel):
     state: str = Field(..., min_length=2, max_length=2)
@@ -55,15 +56,29 @@ class LeaseAnalyzerInput(BaseModel):
             raise ValueError("inputType must be 'text', 'url', or 'file'")
         return v
 
+class SessionContext(BaseModel):
+    eligibility_result: Optional[str] = None
+    lease_analysis: Optional[str] = None
+
+
 class ChatbotInput(BaseModel):
     user_question: str = Field(..., min_length=3, max_length=1000)
     tenant_name: Optional[str] = "Tenant"
-    conversation_history: Optional[str] = ""
+    conversation_history: Optional[list] = []
+    session_context: Optional[SessionContext] = None
 
     @validator("user_question")
     def sanitize_question(cls, v):
-        # Block prompt injection attempts
         blocked = ["ignore previous", "system:", "you are now", "jailbreak"]
         if any(phrase in v.lower() for phrase in blocked):
             raise ValueError("Question contains disallowed content")
         return v
+
+class TourRequestInput(BaseModel):
+    landlord_email: EmailStr = Field(..., description="Landlord or leasing office email")
+    tenant_name: str = Field(..., min_length=1, description="Prospective tenant full name")
+    property_address: str = Field(..., min_length=3, description="Property address to tour")
+    preferred_date: str = Field(..., min_length=1, description="Preferred tour date")
+    preferred_time: str = Field(..., min_length=1, description="Preferred tour time")
+    tenant_phone: str | None = Field(default=None, description="Tenant phone number")
+    message: str | None = Field(default=None, description="Optional additional note")

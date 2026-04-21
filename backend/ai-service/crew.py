@@ -1,5 +1,10 @@
 # crew.py
+import os
+import sys
+
 from crewai import Crew, Process
+from mcp import StdioServerParameters
+
 from agents.eligibility_agent import create_eligibility_agent
 from agents.property_agent import create_property_agent
 from agents.contract_agent import create_contract_agent
@@ -24,42 +29,52 @@ from tasks.lease_analyzer_tasks import (
     on_task_complete,
 )
 
+from agents.tour_request_agent import create_tour_request_agent
+from tasks.send_tour_request_task import create_send_tour_request_task
+from db.vector_store import similarity_search
+
+_MCP_SERVER = StdioServerParameters(
+    command=sys.executable,
+    args=[os.path.join(os.path.dirname(__file__), "mcp_server.py")],
+    env={**os.environ},
+)
+
+
 def run_eligibility(inputs: dict) -> str:
-    """Runs only the eligibility calculator crew."""
     agent = create_eligibility_agent()
-    task = create_eligibility_task(agent)
+    task = create_eligibility_task(agent=agent, applicant_data=inputs)
     crew = Crew(
         agents=[agent],
         tasks=[task],
         process=Process.sequential,
         memory=True,
-        verbose=True
+        verbose=True,
     )
     return crew.kickoff(inputs=inputs)
 
+
 def run_property_matcher(inputs: dict) -> str:
-    """Runs only the property matcher crew."""
-    agent = create_property_agent()
+    agent = create_property_agent(_MCP_SERVER)
     task = create_property_task(agent)
     crew = Crew(
         agents=[agent],
         tasks=[task],
         process=Process.sequential,
         memory=True,
-        verbose=True
+        verbose=True,
     )
     return crew.kickoff(inputs=inputs)
 
+
 def run_contract_analyzer(inputs: dict) -> str:
-    """Runs only the contract analyzer crew. Includes HITL on task."""
-    agent = create_contract_agent()
+    agent = create_contract_agent(_MCP_SERVER)
     task = create_contract_task(agent)
     crew = Crew(
         agents=[agent],
         tasks=[task],
         process=Process.sequential,
         memory=True,
-        verbose=True
+        verbose=True,
     )
     return crew.kickoff(inputs=inputs)
 
@@ -87,14 +102,84 @@ def run_lease_analyzer(inputs: dict) -> str:
     return crew.kickoff(inputs=inputs)
 
 def run_chatbot(inputs: dict) -> str:
-    """Runs only the chatbot crew."""
-    agent = create_chatbot_agent()
+    ctx = inputs.get("session_context")
+    if ctx is not None and hasattr(ctx, "model_dump"):
+        ctx_data = ctx.model_dump(exclude_none=True)
+        if ctx_data:
+            lines = []
+            if ctx_data.get("eligibility_result"):
+                lines.append(f"Eligibility result: {ctx_data['eligibility_result']}")
+            if ctx_data.get("lease_analysis"):
+                lines.append(f"Lease analysis:\n{ctx_data['lease_analysis']}")
+            inputs["session_context"] = "\n".join(lines) if lines else "No prior results available."
+        else:
+            inputs["session_context"] = "No prior results available."
+    elif not inputs.get("session_context"):
+        inputs["session_context"] = "No prior results available."
+
+    agent = create_chatbot_agent(_MCP_SERVER)
     task = create_chatbot_task(agent)
     crew = Crew(
         agents=[agent],
         tasks=[task],
         process=Process.sequential,
         memory=True,
-        verbose=True
+        verbose=True,
+    )
+    return crew.kickoff(inputs=inputs)
+
+
+def run_search_agent(inputs: dict) -> dict:
+    raw_query = (inputs.get("query") or "").strip()
+    city = (inputs.get("city") or "").strip()
+    state = (inputs.get("state") or "").strip()
+    raw_limit = inputs.get("limit")
+    limit = int(raw_limit) if raw_limit not in (None, "") else None
+
+    if not city or not state:
+        raise ValueError("Both city and state are required for search.")
+
+    results = similarity_search(
+        query=raw_query if raw_query else None,
+        city=city,
+        state=state,
+        limit=limit,
+    )
+    return {
+        "query": raw_query if raw_query else None,
+        "city": city,
+        "state": state,
+        "total_found": len(results),
+        "results": results,
+    }
+
+
+def run_eligibility_tasks(applicant_data: dict, search_output: str) -> str:
+        agent = create_eligibility_agent()
+        task = create_eligibility_task(
+            agent=agent,
+            applicant_data=applicant_data,
+        )
+
+        crew = Crew(
+            agents=[agent],
+            tasks=[task],
+            process=Process.sequential,
+            verbose=True,
+        )
+
+        result = crew.kickoff()
+        return str(result)
+
+def run_send_tour_request(inputs: dict) -> str:
+    agent = create_tour_request_agent(_MCP_SERVER)
+    task = create_send_tour_request_task(agent)
+
+    crew = Crew(
+        agents=[agent],
+        tasks=[task],
+        process=Process.sequential,
+        memory=True,
+        verbose=True,
     )
     return crew.kickoff(inputs=inputs)

@@ -1,24 +1,24 @@
-# agents/chatbot_agent.py
 from crewai import Agent
-from tools.leasing_kb_tool import leasing_kb_tool
 
-def create_chatbot_agent():
+
+def create_chatbot_agent(server):
     return Agent(
         role="Leasing Support Chatbot",
         goal=(
-            "Answer tenant questions about leasing processes, contracts, "
-            "tenant rights, application steps, and contact information. "
-            "Be concise, friendly, and always cite your source. "
-            "If you don't know, say so — never guess."
+            "Answer tenant questions about leasing processes, contracts, tenant rights, "
+            "application steps, and rental listings. "
+            "Use search_listings for property searches, get_state_law for legal questions, "
+            "and lookup_leasing_faq for process questions. "
+            "Be concise, friendly, and always cite your source."
         ),
         backstory=(
-            "You are a helpful leasing office assistant with deep knowledge "
-            "of the rental process from start to finish. You help tenants "
-            "understand their options, rights, and next steps. You are warm "
-            "and never condescending. You know when to escalate to a human."
+            "You are a helpful leasing assistant with access to real rental listings, "
+            "state tenant protection laws, and a comprehensive leasing knowledge base. "
+            "You help tenants understand their options, rights, and next steps. "
+            "You know when to use each tool and when to escalate to a human."
         ),
-        tools=[leasing_kb_tool],
+        mcps=[server],
         memory=True,
         verbose=True,
-        max_iter=3
+        max_iter=5,
     )
