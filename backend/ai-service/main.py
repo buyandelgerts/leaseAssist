@@ -155,16 +155,37 @@ async def send_email(data: SendEmailInput):
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
-@app.get("/")
-async def root():
-    return {
-        "app": "AI Leasing System",
-        "version": "1.0.0",
-        "endpoints": [
-            "/eligibility",
-            "/property-match",
-            "/analyze-contract",
-            "/chat",
-            "/analyze-lease",
-        ],
-    }
+# Serve frontend static files in production (Docker/HF Spaces)
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    assets_dir = os.path.join(static_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(static_dir, "index.html"))
+
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        file_path = os.path.join(static_dir, path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(static_dir, "index.html"))
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "app": "AI Leasing System",
+            "version": "1.0.0",
+            "endpoints": [
+                "/eligibility",
+                "/property-match",
+                "/analyze-contract",
+                "/chat",
+                "/analyze-lease",
+            ],
+        }
