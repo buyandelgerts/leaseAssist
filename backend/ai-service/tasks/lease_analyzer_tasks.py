@@ -182,19 +182,22 @@ def negotiate_task(agent, extract_task, red_flag_task, compare_task):
             "Extract the landlord name from the email address (the part before @, "
             "capitalize it properly) and use it in the greeting instead of [Landlord's Name].\n"
             "For example if the email is john.smith@gmail.com, write 'Dear John Smith,'.\n"
-            "Also extract the property address from the lease text and use it in the email "
-            "instead of [Property Address]. If no address is found, use the city name: {cityName}.\n\n"
+            "Do NOT mention [Property Address] or any property address placeholder in the email.\n"
+            "End the email with:\n"
+            "Best regards,\n"
+            "Group 4\n\n"
+            "Do NOT add [Your Name], [Your Contact Information], or any other placeholder after the sign-off.\n\n"
             "IMPORTANT RULES:\n"
             "- Do NOT use any markdown (no **, no ##, no ---).\n"
             "- Write in plain text only.\n"
             "- Every lease item must be either RED or GREEN. No middle category.\n"
             "- For red items, always cite the applicable state/city law.\n"
-            "- Keep descriptions clear and concise like a professional email."
+            "- Keep descriptions clear and concise like a professional email.\n\n"
         ),
         expected_output=(
             "Three sections: RED FLAGS (numbered list with title and description), "
             "GREEN FLAGS (numbered list with title and description), "
-            "and DRAFT EMAIL (professional plain-text email to landlord)."
+            "and DRAFT EMAIL (professional plain-text email covering only RED FLAG items)."
         ),
         agent=agent,
         context=[extract_task, red_flag_task, compare_task],

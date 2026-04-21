@@ -78,8 +78,8 @@ def run_contract_analyzer(inputs: dict) -> str:
     )
     return crew.kickoff(inputs=inputs)
 
-
 def run_lease_analyzer(inputs: dict) -> str:
+    """Runs the full lease analyzer crew (6 agents, 6 tasks)."""
     scraper = web_scraper_agent()
     extractor = clause_extractor_agent()
     detector = red_flag_detector_agent()
@@ -97,10 +97,9 @@ def run_lease_analyzer(inputs: dict) -> str:
         tasks=[t_scrape, t_extract, t_red_flag, t_compare, t_negotiate],
         process=Process.sequential,
         verbose=True,
-        task_callback=on_task_complete,
+        task_callback=on_task_complete
     )
     return crew.kickoff(inputs=inputs)
-
 
 def run_chatbot(inputs: dict) -> str:
     ctx = inputs.get("session_context")

@@ -1,3 +1,15 @@
+---
+title: Leaseassistant
+emoji: 🏠
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+short_description: AI-powered lease agreement analyzer
+---
+
 # LeaseAssist
 
 AI-powered lease agreement analyzer that detects red flags, green flags, and generates negotiation emails using CrewAI multi-agent system.
