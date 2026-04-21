@@ -1,15 +1,18 @@
 import os
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+from crew import run_send_tour_request
 
 from guardrails.input_guard import (
     EligibilityInput,
-    PropertyInput,
     ContractInput,
     ChatbotInput,
     LeaseAnalyzerInput,
+    SearchInput,
     SessionContext,
+    TourRequestInput,
 )
 from guardrails.output_guard import (
     validate_eligibility_output,
@@ -23,6 +26,8 @@ from crew import (
     run_contract_analyzer,
     run_chatbot,
     run_lease_analyzer,
+    run_search_agent,
+    run_eligibility_tasks,
 )
 
 load_dotenv()  # loads ai-service/.env
@@ -43,16 +48,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def root():
+    return {"message": "Rental AI Search API is running"}
 
 @app.post("/eligibility")
 async def check_eligibility(data: EligibilityInput):
     try:
         result = run_eligibility(inputs=data.model_dump())
-        validated = validate_eligibility_output(str(result))
+        result_text = str(result)
+        validated = validate_eligibility_output(result_text)
+        try:
+            parsed_result = json.loads(validated)
+        except json.JSONDecodeError:
+            # Fallback shape when agent output is plain text
+            parsed_result = {"message": validated}
         return {
             "status": "success",
             "process": "eligibility",
-            "result": validated,
+            "result": parsed_result,
         }
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -60,19 +74,19 @@ async def check_eligibility(data: EligibilityInput):
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
-@app.post("/property-match")
-async def match_property(data: PropertyInput):
-    try:
-        result = run_property_matcher(inputs=data.model_dump())
-        return {
-            "status": "success",
-            "process": "property_matcher",
-            "result": str(result),
-        }
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+# @app.post("/property-match")
+# async def match_property(data: PropertyInput):
+#     try:
+#         result = run_property_matcher(inputs=data.model_dump())
+#         return {
+#             "status": "success",
+#             "process": "property_matcher",
+#             "result": str(result),
+#         }
+#     except ValueError as e:
+#         raise HTTPException(status_code=422, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
 @app.post("/analyze-contract")
@@ -121,6 +135,33 @@ async def analyze_lease(data: LeaseAnalyzerInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
+@app.post("/search")
+async def search(data: SearchInput):
+    try:
+        result = run_search_agent(inputs=data.model_dump())
+        return {
+            "status": "success",
+            "process": "search",
+            "result": result,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+@app.post("/tour-request")
+async def send_tour_request(data: TourRequestInput):
+    try:
+        result = run_send_tour_request(inputs=data.model_dump())
+        return {
+            "status": "success",
+            "process": "tour_request",
+            "result": str(result),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 @app.get("/")
 async def root():
@@ -133,5 +174,8 @@ async def root():
             "/analyze-contract",
             "/chat",
             "/analyze-lease",
+            "/search",
+            "/eligibility-tasks",
+            "/tour-request",
         ],
     }

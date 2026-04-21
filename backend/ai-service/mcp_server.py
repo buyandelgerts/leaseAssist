@@ -1,6 +1,7 @@
 import os
 import smtplib
 from email.mime.text import MIMEText
+from email.utils import parseaddr
 
 import httpx
 from dotenv import load_dotenv
@@ -15,6 +16,25 @@ from tools.property_search_tool import PROPERTY_DB
 mcp = FastMCP("LeaseAssist AI Tools")
 
 API_SERVICE_URL = os.getenv("API_SERVICE_URL", "http://localhost:8001")
+
+
+def _is_valid_email(email: str) -> bool:
+    _, parsed = parseaddr(email or "")
+    return "@" in parsed and "." in parsed.split("@")[-1]
+
+
+def _send_gmail_email(to: str, subject: str, body: str) -> str:
+    sender = os.environ["GMAIL_SENDER"]
+    password = os.environ["GMAIL_APP_PASSWORD"]
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["To"] = to
+    msg["From"] = sender
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(sender, password)
+        server.send_message(msg)
+    return f"Email successfully sent to {to}"
 
 
 @mcp.tool()
@@ -382,18 +402,67 @@ def send_email(to: str, subject: str, body: str) -> str:
         subject: Email subject line
         body: Full email body text
     """
-    sender = os.environ["GMAIL_SENDER"]
-    password = os.environ["GMAIL_APP_PASSWORD"]
-    msg = MIMEText(body)
-    msg["Subject"] = subject
-    msg["To"] = to
-    msg["From"] = sender
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(sender, password)
-            server.send_message(msg)
-        return f"Email successfully sent to {to}"
+        return _send_gmail_email(to=to, subject=subject, body=body)
+    except Exception as e:
+        return f"Failed to send email: {str(e)}"
+
+
+@mcp.tool()
+def send_apartment_tour_request(
+    landlord_email: str,
+    tenant_name: str,
+    property_address: str,
+    preferred_date: str,
+    preferred_time: str,
+    tenant_email: str | None = None,
+    tenant_phone: str | None = None,
+    message: str | None = None,
+) -> str:
+    """
+    Send a pre-formatted apartment tour request email to a landlord.
+
+    Args:
+        landlord_email: Landlord/leasing contact email
+        tenant_name: Name of the prospective tenant
+        property_address: Property address the tenant wants to tour
+        preferred_date: Preferred tour date (e.g. 'May 3, 2026')
+        preferred_time: Preferred time window (e.g. '5:30 PM' or '5-6 PM')
+        tenant_email: Optional tenant email for landlord follow-up
+        tenant_phone: Optional tenant phone for landlord follow-up
+        message: Optional additional message for landlord
+    """
+    if not _is_valid_email(landlord_email):
+        return "Failed to send email: invalid landlord_email format."
+    if tenant_email and not _is_valid_email(tenant_email):
+        return "Failed to send email: invalid tenant_email format."
+
+    subject = f"Apartment Tour Request - {property_address}"
+
+    contact_lines = []
+    if tenant_email:
+        contact_lines.append(f"- Email: {tenant_email}")
+    if tenant_phone:
+        contact_lines.append(f"- Phone: {tenant_phone}")
+    contact_block = "\n".join(contact_lines) if contact_lines else "- Preferred contact: reply to this email"
+
+    extra_message = f"\nAdditional note:\n{message.strip()}\n" if message and message.strip() else ""
+
+    body = (
+        f"Hello,\n\n"
+        f"My name is {tenant_name}, and I am interested in touring the apartment at:\n"
+        f"{property_address}\n\n"
+        f"I would like to request a tour on {preferred_date} at {preferred_time}.\n"
+        f"If that slot is unavailable, I would appreciate alternative options.\n"
+        f"{extra_message}\n"
+        f"My contact details:\n"
+        f"{contact_block}\n\n"
+        f"Thank you for your time,\n"
+        f"{tenant_name}\n"
+    )
+
+    try:
+        return _send_gmail_email(to=landlord_email, subject=subject, body=body)
     except Exception as e:
         return f"Failed to send email: {str(e)}"
 
