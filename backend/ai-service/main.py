@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -110,6 +111,7 @@ async def chat(data: ChatbotInput):
 async def analyze_lease(data: LeaseAnalyzerInput):
     try:
         result = run_lease_analyzer(inputs=data.model_dump())
+        print(f"Raw lease analyzer output===>>:\n{result}\n")
         return {
             "status": "success",
             "process": "lease_analyzer",
@@ -119,6 +121,38 @@ async def analyze_lease(data: LeaseAnalyzerInput):
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
+
+class SendEmailInput(BaseModel):
+    to: str
+    subject: str
+    body: str
+
+
+@app.post("/send-email")
+async def send_email(data: SendEmailInput):
+    import smtplib
+    from email.mime.text import MIMEText
+
+    sender = os.environ.get("GMAIL_SENDER")
+    password = os.environ.get("GMAIL_APP_PASSWORD")
+
+    if not sender or not password:
+        raise HTTPException(status_code=500, detail="Email credentials not configured")
+
+    msg = MIMEText(data.body)
+    msg["Subject"] = data.subject
+    msg["To"] = data.to
+    msg["From"] = sender
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(sender, password)
+            server.send_message(msg)
+        return {"status": "success", "message": f"Email sent to {data.to}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
 
 @app.get("/")
