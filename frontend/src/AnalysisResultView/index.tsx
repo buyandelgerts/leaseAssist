@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, ChevronDown, AlertCircle, CheckCircle, Mail, Zap, Send, Loader2, CheckCheck } from "lucide-react";
+import { FileText, ChevronDown, AlertCircle, CheckCircle, Mail, Zap, Send, Loader2, CheckCheck, ArrowRight, ArrowLeft } from "lucide-react";
 
 type AnalysisResultRoute =
   | 'home'
@@ -40,6 +40,98 @@ const API_BASE = import.meta.env.VITE_API_URL || (window.location.port === "5173
 
 const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: AnalysisResultViewProps) => {
     const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+    const [emailRegenerating, setEmailRegenerating] = useState(false);
+    const [isReviewed, setIsReviewed] = useState(false);
+
+    // Split result into sections
+    const lower = analysisResult.toLowerCase();
+    const redIdx = lower.indexOf('red flag');
+    const greenIdx = lower.indexOf('green flag');
+
+    const searchFrom = greenIdx !== -1 ? greenIdx : 0;
+    const candidates = [
+      lower.indexOf('draft email', searchFrom),
+      lower.indexOf('section 3', searchFrom),
+      lower.indexOf('subject:', searchFrom),
+      lower.indexOf('dear ', searchFrom),
+    ].filter(i => i !== -1);
+    const emailIdx = candidates.length > 0 ? Math.min(...candidates) : -1;
+
+    let redText = '';
+    let greenText = '';
+    let initialEmailText = '';
+
+    if (redIdx !== -1 && greenIdx !== -1) {
+      redText = analysisResult.slice(redIdx, greenIdx);
+      greenText = analysisResult.slice(greenIdx, emailIdx !== -1 ? emailIdx : undefined);
+    } else if (redIdx !== -1) {
+      redText = analysisResult.slice(redIdx, emailIdx !== -1 ? emailIdx : undefined);
+    }
+    if (emailIdx !== -1) {
+      initialEmailText = analysisResult.slice(emailIdx);
+    }
+
+    const cleanSection = (s: string) => s
+      .replace(/^.*?(red|green)\s*flag[^\n]*\n?/i, '')
+      .replace(/\n?\s*SECTION\s+\d+\s*[-—][^\n]*/gi, '')
+      .trim();
+
+    redText = cleanSection(redText);
+    greenText = cleanSection(greenText);
+    initialEmailText = initialEmailText
+      .replace(/^.*?draft email[^\n]*\n?/i, '')
+      .replace(/^.*?SECTION\s+\d+\s*[-—][^\n]*\n?/i, '')
+      .trim();
+
+    const parsedRed = parseNumberedItems(redText);
+    const parsedGreen = parseNumberedItems(greenText);
+
+    const [redItems, setRedItems] = useState<ParsedItem[]>(parsedRed);
+    const [greenItems, setGreenItems] = useState<ParsedItem[]>(parsedGreen);
+    const [emailText, setEmailText] = useState(initialEmailText);
+
+    const moveToGreen = (index: number) => {
+      const item = redItems[index];
+      setRedItems(prev => prev.filter((_, i) => i !== index));
+      setGreenItems(prev => [...prev, item]);
+      setIsReviewed(false);
+      setSendStatus('idle');
+    };
+
+    const moveToRed = (index: number) => {
+      const item = greenItems[index];
+      setGreenItems(prev => prev.filter((_, i) => i !== index));
+      setRedItems(prev => [...prev, item]);
+      setIsReviewed(false);
+      setSendStatus('idle');
+    };
+
+    const handleConfirmAndRegenerate = async () => {
+      if (redItems.length === 0) {
+        setEmailText("No red flags remaining. No email needed.");
+        setIsReviewed(true);
+        return;
+      }
+      setEmailRegenerating(true);
+      try {
+        const res = await fetch(`${API_BASE}/regenerate-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            red_flags: redItems.map(item => `${item.title}: ${item.body.replace(/^\s+/gm, '')}`),
+            landlord_email: landlordEmail,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed");
+        const data = await res.json();
+        setEmailText(data.email_draft);
+        setIsReviewed(true);
+      } catch {
+        setEmailText("Failed to regenerate email. Please try again.");
+      } finally {
+        setEmailRegenerating(false);
+      }
+    };
 
     const handleSendEmail = async () => {
       setSendStatus('sending');
@@ -60,50 +152,12 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
       }
     };
 
-    // Split result into sections
-    const lower = analysisResult.toLowerCase();
-    const redIdx = lower.indexOf('red flag');
-    const greenIdx = lower.indexOf('green flag');
-
-    // Find email start — look for these markers AFTER the green flags section
-    const searchFrom = greenIdx !== -1 ? greenIdx : 0;
-    const candidates = [
-      lower.indexOf('draft email', searchFrom),
-      lower.indexOf('section 3', searchFrom),
-      lower.indexOf('subject:', searchFrom),
-      lower.indexOf('dear ', searchFrom),
-    ].filter(i => i !== -1);
-    const emailIdx = candidates.length > 0 ? Math.min(...candidates) : -1;
-
-    let redText = '';
-    let greenText = '';
-    let emailText = '';
-
-    if (redIdx !== -1 && greenIdx !== -1) {
-      redText = analysisResult.slice(redIdx, greenIdx);
-      greenText = analysisResult.slice(greenIdx, emailIdx !== -1 ? emailIdx : undefined);
-    } else if (redIdx !== -1) {
-      redText = analysisResult.slice(redIdx, emailIdx !== -1 ? emailIdx : undefined);
-    }
-    if (emailIdx !== -1) {
-      emailText = analysisResult.slice(emailIdx);
-    }
-
-    // Remove section headers and "SECTION N —" markers
-    const cleanSection = (s: string) => s
-      .replace(/^.*?(red|green)\s*flag[^\n]*\n?/i, '')
-      .replace(/\n?\s*SECTION\s+\d+\s*[-—][^\n]*/gi, '')
-      .trim();
-
-    redText = cleanSection(redText);
-    greenText = cleanSection(greenText);
-    emailText = emailText
-      .replace(/^.*?draft email[^\n]*\n?/i, '')
-      .replace(/^.*?SECTION\s+\d+\s*[-—][^\n]*\n?/i, '')
-      .trim();
-
-    const redItems = parseNumberedItems(redText);
-    const greenItems = parseNumberedItems(greenText);
+    const total = redItems.length + greenItems.length;
+    const redPercent = total > 0 ? Math.round((redItems.length / total) * 100) : 0;
+    const greenPercent = 100 - redPercent;
+    const circumference = 2 * Math.PI * 54;
+    const greenArc = (greenPercent / 100) * circumference;
+    const greenStart = (redPercent / 100) * circumference;
 
     return (
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] bg-slate-50">
@@ -133,63 +187,53 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
               </div>
               <h1 className="text-4xl font-bold text-slate-900 mb-3">Lease Analysis Results</h1>
               <p className="text-slate-600 max-w-2xl">
-                We've audited your lease agreement. Below are the findings regarding financial transparency and legal safeguards.
+                We've audited your lease agreement. Review the flags below and move items between Red and Green as needed.
               </p>
             </div>
 
-            {/* Trust Score Donut */}
-            {redItems.length + greenItems.length > 0 && (() => {
-              const total = redItems.length + greenItems.length;
-              const redPercent = Math.round((redItems.length / total) * 100);
-              const greenPercent = 100 - redPercent;
-              const circumference = 2 * Math.PI * 54;
-              const greenArc = (greenPercent / 100) * circumference;
-              const greenStart = (redPercent / 100) * circumference;
-              return (
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm shrink-0 flex flex-col items-center">
-                  <div className="flex items-center justify-between w-full mb-4">
-                    <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-full">RED FLAG</span>
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">GREEN FLAG</span>
-                  </div>
-                  <div className="relative w-36 h-36">
-                    <svg className="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
-                      <circle cx="60" cy="60" r="54" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                      {/* Red arc */}
-                      <circle
-                        cx="60" cy="60" r="54" fill="none"
-                        stroke="#e11d48" strokeWidth="8"
-                        strokeDasharray={`${(redPercent / 100) * circumference} ${circumference}`}
-                        strokeDashoffset="0"
-                      />
-                      {/* Green arc */}
-                      <circle
-                        cx="60" cy="60" r="54" fill="none"
-                        stroke="#16a34a" strokeWidth="8"
-                        strokeDasharray={`${greenArc} ${circumference}`}
-                        strokeDashoffset={-greenStart}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-lg font-bold text-slate-900">{total} Flags</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 mt-4">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-rose-600"></div>
-                      <span className="text-xs font-bold text-slate-700">{redItems.length} Red ({redPercent}%)</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-green-600"></div>
-                      <span className="text-xs font-bold text-slate-700">{greenItems.length} Green ({greenPercent}%)</span>
-                    </div>
+            {/* Donut Chart */}
+            {total > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm shrink-0 flex flex-col items-center">
+                <div className="flex items-center justify-between w-full mb-4">
+                  <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-full">RED FLAG</span>
+                  <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">GREEN FLAG</span>
+                </div>
+                <div className="relative w-36 h-36">
+                  <svg className="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e11d48" strokeWidth="8"
+                      strokeDasharray={`${(redPercent / 100) * circumference} ${circumference}`} strokeDashoffset="0" />
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#16a34a" strokeWidth="8"
+                      strokeDasharray={`${greenArc} ${circumference}`} strokeDashoffset={-greenStart} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-lg font-bold text-slate-900">{total} Flags</span>
                   </div>
                 </div>
-              );
-            })()}
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-rose-600"></div>
+                    <span className="text-xs font-bold text-slate-700">{redItems.length} Red ({redPercent}%)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-green-600"></div>
+                    <span className="text-xs font-bold text-slate-700">{greenItems.length} Green ({greenPercent}%)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* HITL Info Banner */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <AlertCircle className="text-blue-600 shrink-0" size={20} />
+            <p className="text-sm text-blue-800">
+              <strong>Human-in-the-Loop:</strong> Review each flag below. Use the arrow buttons to move items between Red and Green. When done, click "Confirm & Regenerate Email" to update the draft.
+            </p>
           </div>
 
           {/* Red & Green Flags Side by Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-8 mb-8">
 
             {/* Red Flags */}
             <div>
@@ -199,14 +243,21 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">Red Flags</h3>
-                  <p className="text-sm text-slate-500">Critical clauses requiring immediate clarification</p>
+                  <p className="text-sm text-slate-500">Critical clauses requiring clarification</p>
                 </div>
               </div>
               <div className="space-y-4">
                 {redItems.map((item, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="bg-rose-50 border-b border-rose-100 px-5 py-3">
+                  <div key={`red-${item.title}`} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="bg-rose-50 border-b border-rose-100 px-5 py-3 flex items-center justify-between">
                       <h4 className="font-bold text-rose-900 text-sm">{item.title}</h4>
+                      <button
+                        onClick={() => moveToGreen(i)}
+                        title="Move to Green"
+                        className="flex items-center gap-1 text-xs font-bold text-green-700 bg-green-100 hover:bg-green-200 px-2 py-1 rounded-lg transition-colors"
+                      >
+                        <ArrowRight size={14} /> Green
+                      </button>
                     </div>
                     <div className="px-5 py-4">
                       <p className="text-sm text-slate-700 leading-relaxed">{item.body.replace(/^\s+/gm, '')}</p>
@@ -215,7 +266,7 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
                 ))}
                 {redItems.length === 0 && (
                   <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                    <p className="text-sm text-green-700 font-medium">No red flags identified.</p>
+                    <p className="text-sm text-green-700 font-medium">No red flags — all items are green!</p>
                   </div>
                 )}
               </div>
@@ -229,14 +280,21 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">Green Flags</h3>
-                  <p className="text-sm text-slate-500">Standard or favorable terms for the tenant</p>
+                  <p className="text-sm text-slate-500">Acceptable terms for the tenant</p>
                 </div>
               </div>
               <div className="space-y-4">
                 {greenItems.map((item, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="bg-green-50 border-b border-green-100 px-5 py-3">
+                  <div key={`green-${item.title}`} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="bg-green-50 border-b border-green-100 px-5 py-3 flex items-center justify-between">
                       <h4 className="font-bold text-green-900 text-sm">{item.title}</h4>
+                      <button
+                        onClick={() => moveToRed(i)}
+                        title="Move to Red"
+                        className="flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 px-2 py-1 rounded-lg transition-colors"
+                      >
+                        <ArrowLeft size={14} /> Red
+                      </button>
                     </div>
                     <div className="px-5 py-4">
                       <p className="text-sm text-slate-700 leading-relaxed">{item.body.replace(/^\s+/gm, '')}</p>
@@ -245,12 +303,28 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
                 ))}
                 {greenItems.length === 0 && (
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
-                    <p className="text-sm text-slate-500">No green flags identified.</p>
+                    <p className="text-sm text-slate-500">No green flags.</p>
                   </div>
                 )}
               </div>
             </div>
 
+          </div>
+
+          {/* Confirm Button */}
+          <div className="flex justify-center mb-12">
+            <button
+              onClick={handleConfirmAndRegenerate}
+              disabled={emailRegenerating || isReviewed}
+              className={`px-8 py-3 rounded-xl font-bold transition-colors shadow-md flex items-center gap-2 disabled:cursor-not-allowed ${
+                isReviewed ? 'bg-green-600 text-white' :
+                'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {emailRegenerating && <><Loader2 size={18} className="animate-spin" /> Regenerating Email...</>}
+              {isReviewed && <><CheckCheck size={18} /> Review Confirmed</>}
+              {!emailRegenerating && !isReviewed && <>Confirm & Regenerate Email</>}
+            </button>
           </div>
 
           {/* Email Draft */}
@@ -262,7 +336,9 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900">Draft Email to Landlord</h3>
-                  <p className="text-sm text-slate-500">Auto-generated negotiation email based on the red flags above</p>
+                  <p className="text-sm text-slate-500">
+                    {isReviewed ? 'Updated based on your review' : 'Auto-generated — confirm your review above to update'}
+                  </p>
                 </div>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
@@ -271,17 +347,18 @@ const AnalysisResultView = ({ setCurrentView, analysisResult, landlordEmail }: A
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={handleSendEmail}
-                  disabled={sendStatus === 'sending' || sendStatus === 'sent'}
+                  disabled={sendStatus === 'sending' || sendStatus === 'sent' || !isReviewed}
                   className={`px-6 py-3 rounded-xl font-bold transition-colors shadow-md flex items-center gap-2 disabled:cursor-not-allowed ${
                     sendStatus === 'sent' ? 'bg-green-600 text-white' :
                     sendStatus === 'error' ? 'bg-rose-600 text-white hover:bg-rose-700' :
+                    !isReviewed ? 'bg-slate-300 text-slate-500' :
                     'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
                   {sendStatus === 'sending' && <><Loader2 size={18} className="animate-spin" /> Sending...</>}
                   {sendStatus === 'sent' && <><CheckCheck size={18} /> Email Sent!</>}
                   {sendStatus === 'error' && <><Send size={18} /> Retry Send</>}
-                  {sendStatus === 'idle' && <><Send size={18} /> Send Email to Landlord</>}
+                  {sendStatus === 'idle' && <><Send size={18} /> {isReviewed ? 'Send Email to Landlord' : 'Confirm review first'}</>}
                 </button>
               </div>
             </div>

@@ -45,3 +45,4 @@ venv/
 *.pyc
 *.so
 *.sqlite3
+ppt

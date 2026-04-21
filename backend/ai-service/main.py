@@ -123,6 +123,40 @@ async def analyze_lease(data: LeaseAnalyzerInput):
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
+class RegenerateEmailInput(BaseModel):
+    red_flags: list[str]
+    landlord_email: str
+
+
+@app.post("/regenerate-email")
+async def regenerate_email(data: RegenerateEmailInput):
+    """Regenerate the draft email based on updated red flag list using LLM."""
+    from openai import OpenAI
+    client = OpenAI()
+
+    red_list = "\n".join(f"- {flag}" for flag in data.red_flags)
+    email_parts = data.landlord_email.split("@")[0]
+    landlord_name = email_parts.replace(".", " ").replace("_", " ").title()
+
+    response = client.chat.completions.create(
+        model=os.environ.get("OPENAI_DEFAULT_MODEL", "gpt-3.5-turbo"),
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Write a professional email to the landlord requesting changes for these red flag items:\n\n"
+                f"{red_list}\n\n"
+                f"Address the email to: Dear {landlord_name},\n"
+                f"End with: Best regards,\nGroup 4\n\n"
+                f"Keep the tone polite but firm. Plain text only, no markdown."
+            )
+        }]
+    )
+    return {
+        "status": "success",
+        "email_draft": response.choices[0].message.content,
+    }
+
+
 class SendEmailInput(BaseModel):
     to: str
     subject: str

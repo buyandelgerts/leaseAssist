@@ -82,7 +82,7 @@ const AnalysisUploadView = ({ setCurrentView, setAnalysisResult, setLandlordEmai
       "Lease Clause Extractor",
       "Lease Red Flag Detector",
       "Market Comparison Analyst",
-      "Lease Negotiation Advisor",
+      "Lease Negotiation Advisor — Waiting for review in terminal (HITL)",
     ];
 
     useEffect(() => {

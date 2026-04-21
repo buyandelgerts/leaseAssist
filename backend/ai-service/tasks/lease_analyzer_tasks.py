@@ -192,12 +192,12 @@ def negotiate_task(agent, extract_task, red_flag_task, compare_task):
             "- Write in plain text only.\n"
             "- Every lease item must be either RED or GREEN. No middle category.\n"
             "- For red items, always cite the applicable state/city law.\n"
-            "- Keep descriptions clear and concise like a professional email."
+            "- Keep descriptions clear and concise like a professional email.\n\n"
         ),
         expected_output=(
             "Three sections: RED FLAGS (numbered list with title and description), "
             "GREEN FLAGS (numbered list with title and description), "
-            "and DRAFT EMAIL (professional plain-text email to landlord)."
+            "and DRAFT EMAIL (professional plain-text email covering only RED FLAG items)."
         ),
         agent=agent,
         context=[extract_task, red_flag_task, compare_task],
