@@ -22,7 +22,7 @@ interface TourRequestResponse {
   detail?: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_URL;
 const DEFAULT_LANDLORD_EMAIL = import.meta.env.VITE_LANDLORD_EMAIL;
 
 const PropertyDetailView = ({ setCurrentView, selectedProperty }: PropertyDetailViewProps) => {
