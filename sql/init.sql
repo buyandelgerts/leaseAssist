@@ -1,42 +1,33 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE IF NOT EXISTS rental_listings (
-    id BIGSERIAL PRIMARY KEY,
-    external_id TEXT UNIQUE,
-    source TEXT NOT NULL DEFAULT 'rentcast',
-
-    formatted_address TEXT,
-    city TEXT,
-    state TEXT,
-    zip_code TEXT,
-
-    latitude DOUBLE PRECISION,
-    longitude DOUBLE PRECISION,
-
-    property_type TEXT,
-    bedrooms NUMERIC(4,1),
-    bathrooms NUMERIC(4,1),
-    square_footage INTEGER,
-    lot_size INTEGER,
-    year_built INTEGER,
-
-    price INTEGER,
-    status TEXT,
-    listed_date TIMESTAMP NULL,
-    removed_date TIMESTAMP NULL,
-
-    listing_url TEXT,
-    image_url TEXT,
-
-    description TEXT,
-    raw_json JSONB NOT NULL,
-
-    searchable_text TEXT NOT NULL,
-    embedding VECTOR(1536),
-
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+CREATE TABLE public.rental_listings (
+	id bigserial NOT NULL,
+	rentcast_id text NULL,
+	formatted_address text NULL,
+	city text NULL,
+	state text NULL,
+	zip_code text NULL,
+	latitude float8 NULL,
+	longitude float8 NULL,
+	property_type text NULL,
+	bedrooms numeric NULL,
+	bathrooms numeric NULL,
+	square_footage int4 NULL,
+	price int4 NULL,
+	status text NULL,
+	listing_type text NULL,
+	features jsonb NULL,
+	raw_json jsonb NOT NULL,
+	"content" text NOT NULL,
+	embedding public.vector NULL,
+	created_at timestamp DEFAULT now() NULL,
+	updated_at timestamp DEFAULT now() NULL,
+	CONSTRAINT rental_listings_pkey PRIMARY KEY (id),
+	CONSTRAINT rental_listings_rentcast_id_key UNIQUE (rentcast_id)
 );
+CREATE INDEX idx_rental_bedrooms ON public.rental_listings USING btree (bedrooms);
+CREATE INDEX idx_rental_city_state ON public.rental_listings USING btree (city, state);
+CREATE INDEX idx_rental_price ON public.rental_listings USING btree (price);
 
 CREATE INDEX IF NOT EXISTS idx_rental_city_state
 ON rental_listings(city, state);

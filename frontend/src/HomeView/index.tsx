@@ -1,4 +1,4 @@
-import { Activity, AlertCircle, CheckCircle, ChevronDown, FileText, Percent, Shield, Zap } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle, FileText, Percent, Shield, Zap } from "lucide-react";
 
 type HomeViewRoute =
   | 'home'
