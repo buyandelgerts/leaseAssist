@@ -1,21 +1,20 @@
+import json
 import os
 import smtplib
 from email.mime.text import MIMEText
 from email.utils import parseaddr
 
-import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
+from db.vector_store import similarity_search
 from tools.contract_analyzer_tool import STATE_LAWS
 from tools.leasing_kb_tool import LEASING_FAQ
 from tools.property_search_tool import PROPERTY_DB
 
 mcp = FastMCP("LeaseAssist AI Tools")
-
-API_SERVICE_URL = os.getenv("API_SERVICE_URL", "http://localhost:8001")
 
 
 def _is_valid_email(email: str) -> bool:
@@ -332,34 +331,59 @@ def search_listings(
         max_price: Maximum monthly rent in USD
         min_bedrooms: Minimum number of bedrooms
     """
-    payload: dict = {"query": query, "limit": 5}
-    if city:
-        payload["city"] = city
-    if state:
-        payload["state"] = state
-    if max_price is not None:
-        payload["max_price"] = max_price
-    if min_bedrooms is not None:
-        payload["min_bedrooms"] = min_bedrooms
-
     try:
-        response = httpx.post(f"{API_SERVICE_URL}/search", json=payload, timeout=10.0)
-        response.raise_for_status()
-        results = response.json().get("results", [])
+        results = similarity_search(
+            query=query or None,
+            city=city or "",
+            state=state or "",
+            limit=5,
+        )
         if not results:
             return "No listings found in the database matching your criteria."
         lines = [
             f"• {r.get('formatted_address', 'N/A')} — "
             f"${r.get('price', '?')}/mo, "
             f"{r.get('bedrooms', '?')}bd/{r.get('bathrooms', '?')}ba, "
-            f"{r.get('sqft', 'N/A')} sqft"
+            f"{r.get('square_footage', 'N/A')} sqft"
             for r in results
         ]
         return "\n".join(lines)
-    except httpx.ConnectError:
-        return "Listing database is currently unavailable. Please try again later."
     except Exception as e:
         return f"Could not retrieve listings: {str(e)}"
+
+
+@mcp.tool()
+def search_listings_json(
+    query: str,
+    city: str,
+    state: str,
+    max_budget: int | None = None,
+    limit: int = 3,
+) -> str:
+    """
+    Search real rental listings and return structured JSON for apartment cards.
+    Use this when the user asks about apartments or residences in a specific city.
+    Calls the database directly and returns a JSON array of apartment objects.
+
+    Args:
+        query: Natural language description (e.g. "2-bedroom apartment around $1800")
+        city: City name (e.g. "Austin")
+        state: 2-letter state abbreviation (e.g. "TX")
+        max_budget: Maximum monthly rent in USD
+        limit: Maximum number of results to return (default 3)
+    """
+    try:
+        results = similarity_search(
+            query=query or None,
+            city=city,
+            state=state,
+            limit=limit,
+        )
+        if not results:
+            return json.dumps([])
+        return json.dumps(results)
+    except Exception as e:
+        return json.dumps({"error": f"Could not retrieve listings: {str(e)}"})
 
 
 @mcp.tool()

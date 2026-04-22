@@ -5,10 +5,15 @@ import sys
 from crewai import Crew, Process
 from mcp import StdioServerParameters
 
+from agents.chatbot_agent import (
+    create_chatbot_manager_agent,
+    create_search_sub_agent,
+    create_router_agent,
+    create_general_qa_agent,
+)
 from agents.eligibility_agent import create_eligibility_agent
 from agents.property_agent import create_property_agent
 from agents.contract_agent import create_contract_agent
-from agents.chatbot_agent import create_chatbot_agent
 from agents.lease_analyzer_agents import (
     web_scraper_agent,
     clause_extractor_agent,
@@ -16,10 +21,10 @@ from agents.lease_analyzer_agents import (
     comparison_agent,
     negotiation_advisor_agent,
 )
+from tasks.chatbot_tasks import create_chatbot_manager_task
 from tasks.eligibility_tasks import create_eligibility_task
 from tasks.property_tasks import create_property_task
 from tasks.contract_tasks import create_contract_task
-from tasks.chatbot_tasks import create_chatbot_task
 from tasks.lease_analyzer_tasks import (
     scrape_task,
     extract_task,
@@ -101,32 +106,38 @@ def run_lease_analyzer(inputs: dict) -> str:
     )
     return crew.kickoff(inputs=inputs)
 
-def run_chatbot(inputs: dict) -> str:
-    ctx = inputs.get("session_context")
-    if ctx is not None and hasattr(ctx, "model_dump"):
-        ctx_data = ctx.model_dump(exclude_none=True)
-        if ctx_data:
-            lines = []
-            if ctx_data.get("eligibility_result"):
-                lines.append(f"Eligibility result: {ctx_data['eligibility_result']}")
-            if ctx_data.get("lease_analysis"):
-                lines.append(f"Lease analysis:\n{ctx_data['lease_analysis']}")
-            inputs["session_context"] = "\n".join(lines) if lines else "No prior results available."
-        else:
-            inputs["session_context"] = "No prior results available."
-    elif not inputs.get("session_context"):
-        inputs["session_context"] = "No prior results available."
+def run_chatbot(inputs: dict) -> dict:
+    import json as _json
 
-    agent = create_chatbot_agent(_MCP_SERVER)
-    task = create_chatbot_task(agent)
+    manager = create_chatbot_manager_agent(_MCP_SERVER)
+    search_agent = create_search_sub_agent(_MCP_SERVER)
+    router = create_router_agent()
+    general_qa = create_general_qa_agent()
+
+    manager_task = create_chatbot_manager_task()
+
     crew = Crew(
-        agents=[agent],
-        tasks=[task],
-        process=Process.sequential,
-        memory=True,
+        agents=[search_agent, router, general_qa],
+        tasks=[manager_task],
+        process=Process.hierarchical,
+        manager_agent=manager,
         verbose=True,
     )
-    return crew.kickoff(inputs=inputs)
+    result = crew.kickoff(inputs=inputs)
+
+    if hasattr(result, "json_dict") and result.json_dict:
+        return result.json_dict
+
+    # Hierarchical mode sometimes returns valid JSON as the raw string
+    raw_str = str(result).strip()
+    try:
+        parsed = _json.loads(raw_str)
+        if isinstance(parsed, dict) and "type" in parsed:
+            return parsed
+    except (_json.JSONDecodeError, ValueError):
+        pass
+
+    return {"type": "text", "message": raw_str}
 
 
 def run_search_agent(inputs: dict) -> dict:

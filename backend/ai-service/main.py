@@ -18,7 +18,6 @@ from guardrails.input_guard import (
 from guardrails.output_guard import (
     validate_eligibility_output,
     validate_contract_output,
-    validate_chatbot_output,
     validate_lease_analyzer_output,
 )
 from crew import (
@@ -109,12 +108,23 @@ async def analyze_contract(data: ContractInput):
 @app.post("/chat")
 async def chat(data: ChatbotInput):
     try:
-        result = run_chatbot(inputs=data.model_dump())
-        validated = validate_chatbot_output(str(result))
+        inputs = data.model_dump()
+        ctx = inputs.get("session_context")
+        if ctx is not None and isinstance(ctx, dict):
+            lines = []
+            if ctx.get("eligibility_result"):
+                lines.append(f"Eligibility result: {ctx['eligibility_result']}")
+            if ctx.get("lease_analysis"):
+                lines.append(f"Lease analysis:\n{ctx['lease_analysis']}")
+            inputs["session_context"] = "\n".join(lines) if lines else "No prior results available."
+        else:
+            inputs["session_context"] = "No prior results available."
+
+        result = run_chatbot(inputs=inputs)
         return {
             "status": "success",
             "process": "chatbot",
-            "result": validated,
+            "result": result,
         }
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

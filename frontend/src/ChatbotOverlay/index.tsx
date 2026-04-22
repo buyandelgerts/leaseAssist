@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Bath,
+  BedDouble,
   FileText,
   MessageCircle,
   Percent,
@@ -9,6 +11,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import type { SelectedProperty } from "../App";
 
 type ChatbotOverlayRoute =
   | "home"
@@ -23,11 +26,24 @@ interface SessionContext {
   lease_analysis?: string;
 }
 
-interface ChatbotOverlayProps {
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  setCurrentView: (view: ChatbotOverlayRoute) => void;
-  sessionContext?: SessionContext;
+interface ApartmentResult {
+  id: string | number;
+  formatted_address: string;
+  city: string;
+  state: string;
+  zip_code?: string;
+  price?: number | string;
+  bedrooms?: number | string;
+  bathrooms?: number | string;
+  square_footage?: number | string;
+  property_type?: string;
+  content?: string;
+  similarity_score?: number | null;
+}
+
+interface RouteButton {
+  label: string;
+  route: "calculator" | "analysis-upload";
 }
 
 interface Message {
@@ -35,6 +51,17 @@ interface Message {
   role: "user" | "assistant";
   text: string;
   timestamp: Date;
+  type?: "text" | "apartments" | "route";
+  apartments?: ApartmentResult[];
+  buttons?: RouteButton[];
+}
+
+interface ChatbotOverlayProps {
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+  setCurrentView: (view: ChatbotOverlayRoute) => void;
+  setSelectedProperty: (property: SelectedProperty) => void;
+  sessionContext?: SessionContext;
 }
 
 const QUICK_PROMPTS = [
@@ -46,10 +73,77 @@ const QUICK_PROMPTS = [
 
 const AI_SERVICE_URL = "http://localhost:8000";
 
+function parseNum(v?: number | string): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const x = parseFloat(v.replace(/[^0-9.-]/g, ""));
+    return isNaN(x) ? 0 : x;
+  }
+  return 0;
+}
+
+function toSelectedProperty(apt: ApartmentResult): SelectedProperty {
+  return {
+    id: apt.id,
+    title: apt.property_type || "Rental Property",
+    location: apt.formatted_address || [apt.city, apt.state].filter(Boolean).join(", "),
+    price: parseNum(apt.price),
+    beds: parseNum(apt.bedrooms),
+    baths: parseNum(apt.bathrooms),
+    sqft: parseNum(apt.square_footage),
+    image:
+      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80",
+    summary: apt.content || "",
+  };
+}
+
+const ApartmentChatCard = ({
+  apt,
+  onClick,
+}: {
+  apt: ApartmentResult;
+  onClick: () => void;
+}) => {
+  const price = parseNum(apt.price);
+  const beds = parseNum(apt.bedrooms);
+  const baths = parseNum(apt.bathrooms);
+
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white border border-slate-200 rounded-xl p-3 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
+    >
+      <p className="text-xs font-semibold text-slate-800 leading-snug group-hover:text-blue-600 line-clamp-2">
+        {apt.formatted_address || [apt.city, apt.state].filter(Boolean).join(", ")}
+      </p>
+      <p className="text-base font-bold text-blue-600 mt-1">
+        ${price > 0 ? price.toLocaleString() : "—"}
+        <span className="text-xs font-normal text-slate-500">/mo</span>
+      </p>
+      <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-500">
+        {beds > 0 && (
+          <span className="flex items-center gap-1">
+            <BedDouble size={12} />
+            {beds} bd
+          </span>
+        )}
+        {baths > 0 && (
+          <span className="flex items-center gap-1">
+            <Bath size={12} />
+            {baths} ba
+          </span>
+        )}
+      </div>
+      <p className="text-[10px] text-blue-500 mt-1.5 font-medium">Tap to view details →</p>
+    </div>
+  );
+};
+
 const ChatbotOverlay = ({
   isOpen,
   setIsOpen,
   setCurrentView,
+  setSelectedProperty,
   sessionContext,
 }: ChatbotOverlayProps) => {
   const [messages, setMessages] = useState<Message[]>([
@@ -102,17 +196,38 @@ const ChatbotOverlay = ({
 
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
-      const reply = data?.result ?? "Sorry, I couldn't get a response.";
+      const raw = data?.result;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          text: reply,
-          timestamp: new Date(),
-        },
-      ]);
+      const assistantMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        text: "",
+        timestamp: new Date(),
+      };
+
+      // Normalise: backend may return a plain object or a JSON string
+      let payload: Record<string, unknown> | null = null;
+      if (raw && typeof raw === "object") {
+        payload = raw as Record<string, unknown>;
+      } else if (typeof raw === "string") {
+        try { payload = JSON.parse(raw); } catch { /* fall through */ }
+      }
+
+      if (payload && "type" in payload) {
+        assistantMsg.type = payload.type as Message["type"];
+        assistantMsg.text = (payload.message as string) ?? "";
+        if (payload.type === "apartments" && Array.isArray(payload.apartments)) {
+          assistantMsg.apartments = payload.apartments as ApartmentResult[];
+        }
+        if (payload.type === "route" && Array.isArray(payload.buttons)) {
+          assistantMsg.buttons = payload.buttons as RouteButton[];
+        }
+      } else {
+        assistantMsg.text =
+          typeof raw === "string" ? raw : "Sorry, I couldn't get a response.";
+      }
+
+      setMessages((prev) => [...prev, assistantMsg]);
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -189,9 +304,7 @@ const ChatbotOverlay = ({
           >
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                msg.role === "assistant"
-                  ? "bg-slate-200"
-                  : "bg-blue-100"
+                msg.role === "assistant" ? "bg-slate-200" : "bg-blue-100"
               }`}
             >
               <MessageCircle
@@ -201,13 +314,46 @@ const ChatbotOverlay = ({
             </div>
             <div className={`flex-1 ${msg.role === "user" ? "flex flex-col items-end" : ""}`}>
               <div
-                className={`rounded-2xl p-4 text-sm shadow-sm max-w-[85%] whitespace-pre-wrap ${
+                className={`rounded-2xl p-4 text-sm shadow-sm max-w-[85%] ${
                   msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-tr-sm"
+                    ? "bg-blue-600 text-white rounded-tr-sm whitespace-pre-wrap"
                     : "bg-white border border-slate-200 text-slate-700 rounded-tl-sm"
                 }`}
               >
-                {msg.text}
+                <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                {msg.type === "apartments" && msg.apartments && msg.apartments.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {msg.apartments.map((apt) => (
+                      <ApartmentChatCard
+                        key={apt.id}
+                        apt={apt}
+                        onClick={() => {
+                          setSelectedProperty(toSelectedProperty(apt));
+                          setCurrentView("detail");
+                          setIsOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {msg.type === "route" && msg.buttons && msg.buttons.length > 0 && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    {msg.buttons.map((btn) => (
+                      <button
+                        key={btn.route}
+                        onClick={() => {
+                          setCurrentView(btn.route);
+                          setIsOpen(false);
+                        }}
+                        className="w-full bg-blue-600 text-white text-sm font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-left"
+                      >
+                        {btn.label} →
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block px-1">
                 {formatTime(msg.timestamp)}
@@ -251,18 +397,18 @@ const ChatbotOverlay = ({
               {p.label}
             </button>
           ))}
-          <button
+          {/* <button
             onClick={() => { setIsOpen(false); setCurrentView("calculator"); }}
             className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
           >
             <Percent size={14} /> Check Eligibility
-          </button>
-          <button
+          </button> */}
+          {/* <button
             onClick={() => { setIsOpen(false); setCurrentView("analysis-upload"); }}
             className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
           >
             <FileText size={14} /> Analyze Lease
-          </button>
+          </button> */}
         </div>
 
         <div className="bg-slate-100 rounded-xl p-2 flex items-center gap-2">

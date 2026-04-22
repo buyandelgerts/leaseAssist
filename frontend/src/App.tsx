@@ -84,6 +84,7 @@ export default function App() {
         isOpen={isChatOpen}
         setIsOpen={setIsChatOpen}
         setCurrentView={setCurrentView}
+        setSelectedProperty={setSelectedProperty}
         sessionContext={{
           eligibility_result: eligibilityResult || undefined,
           lease_analysis: analysisResult || undefined,

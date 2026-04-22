@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Any
+from typing import Any, Literal, Optional
 
 class SearchResult(BaseModel):
     id: int
@@ -29,3 +29,15 @@ class EligibilityOutput(BaseModel):
     reasons: list[str]
     applied_rules: list[str]
     recommendation: str
+
+
+class RouteButton(BaseModel):
+    label: str
+    route: str
+
+
+class ChatbotResponse(BaseModel):
+    type: Literal["text", "apartments", "route"]
+    message: str
+    apartments: Optional[list[dict]] = None
+    buttons: Optional[list[RouteButton]] = None

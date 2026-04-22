@@ -24,13 +24,3 @@ def validate_lease_analyzer_output(output: str) -> str:
         raise ValueError("Output guardrail: lease analysis must include RED or GREEN flag assessments")
     return output
 
-def validate_chatbot_output(output: str) -> str:
-    """Ensures chatbot doesn't hallucinate legal advice."""
-    legal_advice_phrases = [
-        "you should sue", "you will win", "this is illegal and you can",
-        "i guarantee", "100% certain"
-    ]
-    for phrase in legal_advice_phrases:
-        if phrase in output.lower():
-            return output.replace(phrase, "[Note: consult a licensed attorney for legal advice]")
-    return output

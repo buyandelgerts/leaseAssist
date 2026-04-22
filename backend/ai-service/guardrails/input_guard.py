@@ -74,6 +74,7 @@ class ChatbotInput(BaseModel):
             raise ValueError("Question contains disallowed content")
         return v
 
+
 class TourRequestInput(BaseModel):
     landlord_email: EmailStr = Field(..., description="Landlord or leasing office email")
     tenant_name: str = Field(..., min_length=1, description="Prospective tenant full name")

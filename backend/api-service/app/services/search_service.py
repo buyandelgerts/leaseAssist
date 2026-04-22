@@ -92,5 +92,4 @@ def search_listings(
             "content": row.content,
             "similarity": float(row.similarity) if row.similarity is not None else 0.0
         })
-    # print(formatted_results)
     return formatted_results
