@@ -71,7 +71,7 @@ const QUICK_PROMPTS = [
   { label: "Walk me through my lease red flags", icon: <MessageCircle size={14} /> },
 ];
 
-const AI_SERVICE_URL = "http://localhost:8000";
+const AI_SERVICE_URL = import.meta.env.VITE_API_URL;
 
 function parseNum(v?: number | string): number {
   if (typeof v === "number") return v;

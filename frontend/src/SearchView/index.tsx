@@ -54,7 +54,7 @@ interface PropertyCard {
   summary: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const SearchView = ({ setCurrentView, setSelectedProperty }: SearchViewProps) => {
     const RESULTS_PAGE_SIZE = 6;
@@ -110,7 +110,6 @@ const SearchView = ({ setCurrentView, setSelectedProperty }: SearchViewProps) =>
         });
 
         const data = await response.json();
-
         if (!response.ok) {
           throw new Error(data?.detail || "Search request failed.");
         }
@@ -128,24 +127,20 @@ const SearchView = ({ setCurrentView, setSelectedProperty }: SearchViewProps) =>
     const cards: PropertyCard[] = hasApiResults
       ? apiResults.map((item, index) => {
           const parsedPrice = parseNumericValue(item.price);
-          const parsedBeds = parseNumericValue(item.beds);
-          const parsedBaths = parseNumericValue(item.baths);
-          const parsedSqft = parseNumericValue(item.sqft);
-          const location =
-            item.formatted_address ||
-            [item.city, item.state].filter(Boolean).join(", ") ||
-            `${city}, ${state}`;
-
-          return {
+          const parsedBeds = parseNumericValue(item.beds ?? (item as { bedrooms?: number | string }).bedrooms);
+          const parsedBaths = parseNumericValue(item.baths ?? (item as { bathrooms?: number | string }).bathrooms);
+          const parsedSqft = parseNumericValue(item.sqft ?? (item as { square_footage?: number | string }).square_footage);
+          const cardLocation = [item.city, item.state].filter(Boolean).join(", ") || cityState;
+        return {
             id: item.id ?? `api-${index}`,
             title: item.property_type || `Search result ${index + 1}`,
             address: item.formatted_address,
-            location,
+            location: cardLocation,
             zip_code: item.zip_code,
-            price: Number.isFinite(parsedPrice) ? parsedPrice : 0,
-            beds: Number.isFinite(parsedBeds) ? parsedBeds : 1,
-            baths: Number.isFinite(parsedBaths) ? parsedBaths : 1,
-            sqft: Number.isFinite(parsedSqft) ? parsedSqft : 0,
+            price: Number.isInteger(parsedPrice) ? parsedPrice : 0,
+            beds: Number.isInteger(parsedBeds) ? parsedBeds : 1,
+            baths: Number.isInteger(parsedBaths) ? parsedBaths : 1,
+            sqft: Number.isInteger(parsedSqft) ? parsedSqft : 0,
             property_type: item.property_type,
             image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
             tags: [`Score ${((item.similarity_score ?? 0) * 100).toFixed(1)}%`],

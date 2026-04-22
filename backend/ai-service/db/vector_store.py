@@ -19,6 +19,7 @@ def similarity_search(
     city: str = "",
     state: str = "",
     limit: Optional[int] = None,
+    min_similarity: float = 0.0,  # e.g. 0.3 to filter weak matches
 ) -> list[dict[str, Any]]:
     cleaned_query = (query or "").strip()
     cleaned_city = city.strip()
@@ -27,81 +28,75 @@ def similarity_search(
     if not cleaned_city or not cleaned_state:
         raise ValueError("Both city and state are required for similarity_search.")
 
-    where_clauses: list[str] = ["LOWER(city) = LOWER(%s)", "UPPER(state) = UPPER(%s)"]
-    where_params: list[Any] = [cleaned_city, cleaned_state]
+    # Shared column list — no duplication between branches
+    SELECT_COLS = """
+        id,
+        formatted_address,
+        city,
+        state,
+        zip_code,
+        property_type,
+        price,
+        bedrooms,
+        bathrooms,
+        square_footage,
+        listing_type,
+        content
+    """
+
+    params: list[Any] = []
 
     if cleaned_query:
         query_vector = embed_text(cleaned_query)
-        sql = """
-            SELECT
-                id,
-                formatted_address,
-                city,
-                state,
-                zip_code,
-                property_type,
-                price,
-                bedrooms,
-                bathrooms,
-                square_footage,
-                listing_type,
-                content,
-                1.0 / (1.0 + (embedding <=> %s::vector)) AS similarity_score
-            FROM rental_listings
+
+        # Use a CTE so the vector literal appears only once in the query
+        sql = f"""
+            WITH ranked AS (
+                SELECT
+                    {SELECT_COLS},
+                    -- Cosine distance (0 = identical, 2 = opposite)
+                    -- Cosine similarity = 1 - cosine_distance  (range: -1 … 1)
+                    1.0 - (embedding <=> %s::vector) AS similarity_score
+                FROM rental_listings
+                WHERE
+                    LOWER(city)  = LOWER(%s)
+                    AND UPPER(state) = UPPER(%s)
+            )
+            SELECT * FROM ranked
+            WHERE similarity_score >= %s
+            ORDER BY similarity_score DESC
         """
-        params: list[Any] = [query_vector, *where_params, query_vector]
-        sql += " WHERE " + " AND ".join(where_clauses)
-        sql += " ORDER BY embedding <=> %s::vector"
-        if limit is not None:
-            sql += " LIMIT %s"
-            params.append(limit)
-        sql += ";"
+        params = [query_vector, cleaned_city, cleaned_state, min_similarity]
+
     else:
-        sql = """
+        sql = f"""
             SELECT
-                id,
-                formatted_address,
-                city,
-                state,
-                zip_code,
-                property_type,
-                price,
-                bedrooms,
-                bathrooms,
-                square_footage,
-                listing_type,
-                content,
+                {SELECT_COLS},
                 NULL::float AS similarity_score
             FROM rental_listings
+            WHERE
+                LOWER(city)  = LOWER(%s)
+                AND UPPER(state) = UPPER(%s)
+            ORDER BY id DESC
         """
-        params = [*where_params]
-        sql += " WHERE " + " AND ".join(where_clauses)
-        sql += " ORDER BY id DESC"
-        if limit is not None:
-            sql += " LIMIT %s"
-            params.append(limit)
-        sql += ";"
+        params = [cleaned_city, cleaned_state]
+
+    if limit is not None:
+        sql += " LIMIT %s"
+        params.append(limit)
+
+    sql += ";"
 
     results = []
     with get_connection() as conn:
         register_vector(conn)
         with conn.cursor() as cur:
             cur.execute(sql, tuple(params))
+            columns = [desc[0] for desc in cur.description]  # resilient to column reorder
             for row in cur.fetchall():
-                results.append({
-                    "id": row[0],
-                    "formatted_address": row[1],
-                    "city": row[2],
-                    "state": row[3],
-                    "zip_code": row[4],
-                    "property_type": row[5],
-                    "price": row[6],
-                    "bedrooms": row[7],
-                    "bathrooms": row[8],
-                    "square_footage": row[9],
-                    "listing_type": row[10],
-                    "content": row[11],
-                    "similarity_score": float(row[12]) if row[12] is not None else None,
-                })
+                record = dict(zip(columns, row))
+                if record["similarity_score"] is not None:
+                    record["similarity_score"] = float(record["similarity_score"])
+                results.append(record)
 
     return results
