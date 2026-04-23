@@ -12,7 +12,6 @@ load_dotenv()
 from db.vector_store import similarity_search
 from tools.contract_analyzer_tool import STATE_LAWS
 from tools.leasing_kb_tool import LEASING_FAQ
-from tools.property_search_tool import PROPERTY_DB
 
 mcp = FastMCP("LeaseAssist AI Tools")
 
@@ -245,111 +244,6 @@ def get_state_law(state: str, topic: str = "general") -> str:
   Watch for        : {', '.join(laws['illegal_clauses'])}
 """
 
-
-@mcp.tool()
-def search_properties(
-    city: str,
-    max_budget: float,
-    min_beds: int = 1,
-    pet_friendly: bool | None = None,
-) -> str:
-    """
-    Search available properties by city, budget, and bedroom count.
-    Returns top 3 ranked matches.
-
-    Args:
-        city: Target city name (e.g. 'Austin', 'Los Angeles')
-        max_budget: Maximum monthly rent in USD
-        min_beds: Minimum number of bedrooms needed
-        pet_friendly: True if tenant has pets
-    """
-    results = []
-    for p in PROPERTY_DB:
-        if not p["available"]:
-            continue
-        if p["city"].lower() != city.lower():
-            continue
-        if p["rent"] > max_budget:
-            continue
-        if p["beds"] < min_beds:
-            continue
-        if pet_friendly and not p["pet_friendly"]:
-            continue
-        budget_score = max(0, 40 * (1 - (p["rent"] / max_budget)))
-        bed_score = 30 if p["beds"] == min_beds else 20
-        amenity_score = min(30, len(p["amenities"]) * 6)
-        results.append({**p, "match_score": round(budget_score + bed_score + amenity_score)})
-
-    if not results:
-        return f"No available properties found in {city} within ${max_budget}/month with {min_beds}+ beds."
-
-    results.sort(key=lambda x: x["match_score"], reverse=True)
-    output = f"=== TOP {len(results[:3])} PROPERTIES IN {city.upper()} ===\n"
-    for i, p in enumerate(results[:3], 1):
-        output += f"""
-Match #{i} — Score: {p['match_score']}/100
-  Address    : {p['address']}, {p['city']}, {p['state']}
-  Rent       : ${p['rent']:,}/month
-  Size       : {p['beds']} bed / {p['baths']} bath — {p['sqft']} sqft
-  Amenities  : {', '.join(p['amenities'])}
-  Pet-friendly: {'Yes' if p['pet_friendly'] else 'No'}
-  Lease term : {p['lease_term']} months
-  Property ID: {p['id']}
-"""
-    return output
-
-
-@mcp.tool()
-def get_property_details(property_id: str) -> str:
-    """
-    Get full details for a specific property by ID.
-
-    Args:
-        property_id: The property ID (e.g. 'P001')
-    """
-    for p in PROPERTY_DB:
-        if p["id"] == property_id:
-            return str(p)
-    return f"Property {property_id} not found."
-
-
-@mcp.tool()
-def search_listings(
-    query: str,
-    city: str | None = None,
-    state: str | None = None,
-    max_price: int | None = None,
-    min_bedrooms: float | None = None,
-) -> str:
-    """
-    Search real rental listings from the database.
-
-    Args:
-        query: Natural language description of what you're looking for
-        city: City to search in (e.g. 'Austin')
-        state: State abbreviation (e.g. 'TX')
-        max_price: Maximum monthly rent in USD
-        min_bedrooms: Minimum number of bedrooms
-    """
-    try:
-        results = similarity_search(
-            query=query or None,
-            city=city or "",
-            state=state or "",
-            limit=5,
-        )
-        if not results:
-            return "No listings found in the database matching your criteria."
-        lines = [
-            f"• {r.get('formatted_address', 'N/A')} — "
-            f"${r.get('price', '?')}/mo, "
-            f"{r.get('bedrooms', '?')}bd/{r.get('bathrooms', '?')}ba, "
-            f"{r.get('square_footage', 'N/A')} sqft"
-            for r in results
-        ]
-        return "\n".join(lines)
-    except Exception as e:
-        return f"Could not retrieve listings: {str(e)}"
 
 
 @mcp.tool()

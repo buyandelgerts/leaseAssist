@@ -129,13 +129,16 @@ def create_chatbot_manager_task():
         ── ROUTING RULES ───────────────────────────────────────────────────────
 
         PATH 1 — APARTMENT SEARCH → type must be "apartments"
-          Trigger : user asks to find, list, or show at most 3 apartments / residences /
+          Trigger : user asks to find, list, or show apartments / residences /
                     rentals in a city, optionally mentioning a price or budget.
           Delegate to: Apartment Search Specialist
+          The specialist calls ListingSearchTool which returns a JSON array of
+          apartment objects (formatted_address, price, bedrooms, bathrooms, sqft).
+          The final response must place that array in the "apartments" field.
 
         PATH 2 — ELIGIBILITY OR LEASE ROUTING → type must be "route"
           Trigger : user asks about eligibility, qualifying for rent, rental budget,
-                    OR asks about analyzing / reviewing / uploading a lease document.
+                    OR asks about analyzing / reviewing / uploading a lease document / lease red flags.
           Delegate to: Navigation Router
 
         PATH 3 — GENERAL QUESTION → type must be "text"
