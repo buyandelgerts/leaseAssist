@@ -1,4 +1,5 @@
 from crewai import Agent
+from tools.vector_search_tool import VectorSearchTool
 
 
 def create_chatbot_manager_agent(server):
@@ -28,15 +29,18 @@ def create_search_sub_agent(server):
     return Agent(
         role="Apartment Search Specialist",
         goal=(
-            "Search for apartment listings that match the tenant's criteria "
+            "Search for apartment listings that match the tenant's criteria using search_listings_json in mcp server and return"
+            "Don't fabricate any listings. If no exact matches, return an empty list. Always return a JSON that return from tool."
             "at most 3 relevant results."
             "and return them as a structured JSON response."
+            "If the tool returns an error or no results, return apartments: [] and a helpful message in the 'message' field."
         ),
         backstory=(
             "You are an apartment search expert."
             "to find real listings and never fabricate results."
         ),
-        mcps=[server],
+        # mcps=[server],
+        tools=[VectorSearchTool()],
         allow_delegation=False,
         verbose=True,
         max_iter=5,

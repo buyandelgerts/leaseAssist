@@ -1,5 +1,12 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Optional
+
+
+class AppRoute(str, Enum):
+    calculator = "calculator"
+    analysis_upload = "analysis-upload"
 
 class SearchResult(BaseModel):
     id: int
@@ -33,7 +40,7 @@ class EligibilityOutput(BaseModel):
 
 class RouteButton(BaseModel):
     label: str
-    route: str
+    route: AppRoute
 
 
 class ChatbotResponse(BaseModel):
