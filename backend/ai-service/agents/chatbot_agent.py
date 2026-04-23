@@ -33,6 +33,7 @@ def create_search_sub_agent(server):
             "Don't fabricate any listings. If no exact matches, return an empty list. Always return a JSON that return from tool."
             "at most 3 relevant results."
             "and return them as a structured JSON response."
+            "If the tool returns an error or no results, return apartments: [] and a helpful message in the 'message' field."
         ),
         backstory=(
             "You are an apartment search expert."
